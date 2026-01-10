@@ -4,21 +4,30 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'pages/todo_page.dart';
 
 void main() {
-  // ⬇️ WAJIB UNTUK WINDOWS / DESKTOP
+  // =============================================================
+  // REQUIRED FOR WINDOWS / DESKTOP SQLITE
+  // =============================================================
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
-  runApp(const MyApp());
+  runApp(const HBExeConApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+/// =============================================================
+/// ROOT APPLICATION
+/// =============================================================
+class HBExeConApp extends StatelessWidget {
+  const HBExeConApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'HB-ExeCon',
       debugShowCheckedModeBanner: false,
-      home: TodoPage(),
+      theme: ThemeData(
+        useMaterial3: true,
+      ),
+      home: const TodoPage(),
     );
   }
 }

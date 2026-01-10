@@ -3,36 +3,45 @@ import 'package:path/path.dart';
 import '../models/todo.dart';
 
 class DBHelper {
-  // =========================
-  // Singleton
-  // =========================
-  static final DBHelper instance = DBHelper._init();
+  // =============================================================
+  // SINGLETON SETUP
+  // =============================================================
+
+  DBHelper._privateConstructor();
+  static final DBHelper instance = DBHelper._privateConstructor();
+
   static Database? _database;
 
-  DBHelper._init();
+  // =============================================================
+  // DATABASE ACCESSOR
+  // =============================================================
 
-  // =========================
-  // Database getter
-  // =========================
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('todo.db');
     return _database!;
   }
 
-  // =========================
-  // Init DB
-  // =========================
+  // =============================================================
+  // DATABASE INITIALIZATION
+  // =============================================================
+
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
   }
 
-  // =========================
-  // Create Table
-  // =========================
+  // =============================================================
+  // DATABASE SCHEMA
+  // =============================================================
+
   Future<void> _createDB(Database db, int version) async {
     await db.execute('''
       CREATE TABLE todos (
@@ -40,34 +49,58 @@ class DBHelper {
         description TEXT NOT NULL,
         ref TEXT,
         priority INTEGER,
-        isDone INTEGER
+        isDone INTEGER,
+        due_date TEXT
       )
     ''');
   }
 
-  // =========================
-  // INSERT
-  // =========================
+  // =============================================================
+  // DATABASE MIGRATION
+  // =============================================================
+
+  Future<void> _onUpgrade(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE todos ADD COLUMN due_date TEXT',
+      );
+    }
+  }
+
+  // =============================================================
+  // CRUD OPERATIONS
+  // =============================================================
+
+  /// INSERT
   Future<int> insertTodo(Todo todo) async {
     final db = await database;
-    return await db.insert('todos', todo.toMap());
+    return await db.insert(
+      'todos',
+      todo.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
-  // =========================
-  // SELECT ALL
-  // =========================
+  /// SELECT ALL
   Future<List<Todo>> getTodos() async {
     final db = await database;
-    final result = await db.query('todos', orderBy: 'id DESC');
 
-    return result.map((json) => Todo.fromMap(json)).toList();
+    final result = await db.query(
+      'todos',
+      orderBy: 'isDone ASC, priority DESC',
+    );
+
+    return result.map((e) => Todo.fromMap(e)).toList();
   }
 
-  // =========================
-  // UPDATE
-  // =========================
+  /// UPDATE (FULL OBJECT)
   Future<int> updateTodo(Todo todo) async {
     final db = await database;
+
     return await db.update(
       'todos',
       todo.toMap(),
@@ -76,29 +109,26 @@ class DBHelper {
     );
   }
 
-  // =========================
-  // DELETE
-  // =========================
-  Future<int> deleteTodo(int id) async {
-    final db = await database;
-    return await db.delete('todos', where: 'id = ?', whereArgs: [id]);
-  }
-
-  // =========================
-  // CLOSE DB (opsional)
-  // =========================
-  Future<void> close() async {
-    final db = await database;
-    db.close();
-  }
-
+  /// UPDATE STATUS ONLY (MARK COMPLETE)
   Future<int> updateTodoStatus(int id, int isDone) async {
     final db = await database;
+
     return await db.update(
       'todos',
       {'isDone': isDone},
       where: 'id = ?',
       whereArgs: [id],
     );
-  }  
+  }
+
+  /// DELETE
+  Future<int> deleteTodo(int id) async {
+    final db = await database;
+
+    return await db.delete(
+      'todos',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }
