@@ -10,6 +10,8 @@ class DBHelper {
   DBHelper._privateConstructor();
   static final DBHelper instance = DBHelper._privateConstructor();
 
+  static const int _dbVersion = 3;
+
   static Database? _database;
 
   // =============================================================
@@ -32,7 +34,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: _dbVersion,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -50,7 +52,8 @@ class DBHelper {
         ref TEXT,
         priority INTEGER,
         isDone INTEGER,
-        due_date TEXT
+        due_date TEXT,
+        progress INTEGER
       )
     ''');
   }
@@ -64,9 +67,9 @@ class DBHelper {
     int oldVersion,
     int newVersion,
   ) async {
-    if (oldVersion < 2) {
+    if (oldVersion < 3) {
       await db.execute(
-        'ALTER TABLE todos ADD COLUMN due_date TEXT',
+        'ALTER TABLE todos ADD COLUMN progress INTEGER',
       );
     }
   }

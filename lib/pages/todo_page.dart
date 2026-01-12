@@ -1,294 +1,350 @@
 import 'package:flutter/material.dart';
-import '../database/db_helper.dart';
 import '../models/todo.dart';
 
 class TodoPage extends StatefulWidget {
-  const TodoPage({super.key});
+  const TodoPage({Key? key}) : super(key: key);
 
   @override
   State<TodoPage> createState() => _TodoPageState();
 }
 
 class _TodoPageState extends State<TodoPage> {
-  // =============================================================
-  // STATE & CONTROLLERS
-  // =============================================================
+  // =====================================================
+  // CONFIG
+  // =====================================================
+  static const List<String> priorities = ['H', 'M', 'L'];
 
-  final TextEditingController descController = TextEditingController();
-  final TextEditingController refController = TextEditingController();
+  // =====================================================
+  // STATE — HB-ExeCon v1
+  // =====================================================
 
-  int priority = 1; // 1=Low, 2=Moderate, 3=High
-  DateTime? selectedDueDate;
-
+  /// Master list
   List<Todo> todos = [];
 
-  // =============================================================
-  // LIFECYCLE
-  // =============================================================
-
-  @override
-  void initState() {
-    super.initState();
-    loadTodos();
+  /// ADD (nullable = optional)
+  String? soNumber;
+  String? ref;
+  String? priority;
+  DateTime? dueDate;
+  int? progress;
+  String optionalLabel(String label, String? value) {
+    return value == null || value.isEmpty ? '$label (optional)' : label;
   }
 
-  // =============================================================
-  // DATA / ACTIONS (CRUD)
-  // =============================================================
-
-  Future<void> loadTodos() async {
-    final data = await DBHelper.instance.getTodos();
-    setState(() {
-      todos = data;
-    });
-  }
-
-  Future<void> addTodo() async {
-    if (descController.text.isEmpty) return;
-
-    print('STEP 1: addTodo() called');
-
-    final todo = Todo(
-      description: descController.text,
-      ref: refController.text.isEmpty ? null : refController.text,
-      priority: priority,
-      isDone: 0,
-      dueDate: selectedDueDate,
-    );
-
-    print('STEP 2: Todo object = ${todo.toMap()}');
-
-    await DBHelper.instance.insertTodo(todo);
-    print('STEP 3: insertTodo() finished');
-
-    await loadTodos();
-    print('STEP 4: loadTodos() finished');
-
-    descController.clear();
-    refController.clear();
-
-    setState(() {
-      priority = 1;
-      selectedDueDate = null;
-    });
-  }
-
-  Future<void> deleteTodo(int id) async {
-    await DBHelper.instance.deleteTodo(id);
-    await loadTodos();
-  }
-
-  Future<void> toggleTodo(Todo todo) async {
-    final newStatus = todo.isDone == 1 ? 0 : 1;
-
-    await DBHelper.instance.updateTodoStatus(todo.id!, newStatus);
-
-    await loadTodos();
-  }
-
-  // =============================================================
-  // UI HELPERS
-  // =============================================================
-
-  Widget _priorityOption({required String label, required int value}) {
-    return Row(
-      children: [
-        Radio<int>(
-          value: value,
-          groupValue: priority,
-          onChanged: (val) {
-            setState(() {
-              priority = val!;
-            });
-          },
-        ),
-        Text(label),
-      ],
-    );
-  }
-
-  String _priorityLabel(int value) {
-    switch (value) {
-      case 1:
-        return 'Low';
-      case 2:
-        return 'Moderate';
-      case 3:
-        return 'High';
-      default:
-        return '';
-    }
-  }
-
-  Future<void> _pickDueDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDueDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-
-    if (picked != null) {
-      setState(() {
-        selectedDueDate = picked;
-      });
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  void _confirmDelete(Todo todo) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Task'),
-        content: const Text('Are you sure you want to delete this task?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              if (todo.id != null) {
-                await deleteTodo(todo.id!);
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+  Widget _metaText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        color: Colors.grey,
       ),
     );
   }
 
-  // =============================================================
+  Widget _buildTodoMetadataRow(Todo todo) {
+    final textStyle = TextStyle(
+      fontSize: 12,
+      color: todo.isDone ? Colors.grey.shade400 : Colors.grey.shade600,
+    );
+
+    List<Widget> items = [];
+
+    if (todo.soNumber != null) {
+      items.add(Text('SO: ${todo.soNumber}', style: textStyle));
+    }
+
+    if (todo.ref != null) {
+      items.add(Text('Ref: ${todo.ref}', style: textStyle));
+    }
+
+    items.add(Text('Pr: ${todo.priority}', style: textStyle));
+
+    if (todo.dueDate != null) {
+      final d = todo.dueDate!.toIso8601String().substring(0, 10);
+      items.add(_metaText('Due: $d'));
+    }
+
+    return Wrap(spacing: 12, runSpacing: 4, children: items);
+  }
+
+  /// EDIT
+  Todo? editingTodo;
+  String? editSoNumber;
+  String? editRef;
+  String? editPriority;
+  DateTime? editDueDate;
+  int? editProgress;
+
+  // =====================================================
+  // CONTROLLERS
+  // =====================================================
+
+  final TextEditingController descController = TextEditingController();
+  final TextEditingController soController = TextEditingController();
+  final TextEditingController refController = TextEditingController();
+
+  final TextEditingController editDescController = TextEditingController();
+  final TextEditingController editSoController = TextEditingController();
+  final TextEditingController editRefController = TextEditingController();
+
+  // =====================================================
+  // LIFECYCLE
+  // =====================================================
+
+  @override
+  void dispose() {
+    descController.dispose();
+    refController.dispose();
+    editDescController.dispose();
+    editRefController.dispose();
+    super.dispose();
+  }
+
+  // =====================================================
+  // LOGIC (kosong dulu, asal ADA)
+  // =====================================================
+
+  void addTodo() {
+    if (descController.text.trim().isEmpty || priority == null) return;
+
+    setState(() {
+      todos.add(
+        Todo(
+          description: descController.text.trim(),
+          soNumber: soNumber,
+          ref: refController.text.trim().isEmpty
+              ? null
+              : refController.text.trim(),
+          priority: priority!,
+          dueDate: dueDate,
+          progress: progress,
+          isDone: false,
+        ),
+      );
+
+      // reset
+      descController.clear();
+      refController.clear();
+      soNumber = null;
+      priority = null;
+      dueDate = null;
+      progress = null;
+    });
+  }
+
+  void deleteTodo(int index) {
+    setState(() {
+      todos.removeAt(index);
+    });
+  }
+
+  void toggleTodo(Todo todo) {
+    setState(() {
+      todo.isDone = !todo.isDone;
+    });
+  }
+
+  void showAddDialog() {
+    descController.clear();
+    soController.clear();
+    refController.clear();
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        String? localPriority;
+        DateTime? localDueDate;
+        int? localProgress;
+
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: const Text('Add Task'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // =====================
+                    // DESCRIPTION (WAJIB)
+                    // =====================
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // =====================
+                    // SO & REF (OPTIONAL, SEJAJAR)
+                    // =====================
+                    TextField(
+                      controller: soController,
+                      decoration: const InputDecoration(
+                        labelText: 'SO# (optional)',
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    TextField(
+                      controller: refController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ref (optional)',
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // =====================
+                    // PRIORITY (WAJIB)
+                    // =====================
+                    DropdownButtonFormField<String>(
+                      value: localPriority,
+                      decoration: const InputDecoration(labelText: 'Priority'),
+                      items: const [
+                        DropdownMenuItem(value: 'H', child: Text('H')),
+                        DropdownMenuItem(value: 'M', child: Text('M')),
+                        DropdownMenuItem(value: 'L', child: Text('L')),
+                      ],
+                      onChanged: (v) => setLocal(() => localPriority = v),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // =====================
+                    // DUE DATE (OPTIONAL)
+                    // =====================
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        localDueDate == null
+                            ? 'Due Date (optional)'
+                            : 'Due Date: ${localDueDate!.toIso8601String().substring(0, 10)}',
+                      ),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setLocal(() => localDueDate = picked);
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // =====================
+                    // PROGRESS (OPTIONAL)
+                    // =====================
+                    TextField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Progress % (optional)',
+                      ),
+                      onChanged: (v) =>
+                          setLocal(() => localProgress = int.tryParse(v)),
+                    ),
+                  ],
+                ),
+              ),
+
+              // =====================
+              // ACTIONS
+              // =====================
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    descController.clear();
+                    soController.clear();
+                    refController.clear();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (descController.text.trim().isEmpty ||
+                        localPriority == null) {
+                      return;
+                    }
+
+                    // COMMIT KE STATE PAGE (SATU ARAH)
+                    priority = localPriority;
+                    dueDate = localDueDate;
+                    progress = localProgress;
+
+                    soNumber = soController.text.trim().isEmpty
+                        ? null
+                        : soController.text.trim();
+
+                    addTodo();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // =====================================================
   // UI
-  // =============================================================
+  // =====================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('HB-ExeCon v1')),
-      body: Column(
-        children: [
-          // ================= INPUT SECTION =================
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(
-                    labelText: 'Task Description',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
+      body: todos.isEmpty
+          ? const Center(child: Text('No tasks yet'))
+          : ListView.builder(
+              itemCount: todos.length,
+              itemBuilder: (context, index) {
+                final todo = todos[index];
 
-                Row(
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: refController,
-                        decoration: const InputDecoration(
-                          labelText: 'Ref (optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                    Checkbox(
+                      value: todo.isDone,
+                      onChanged: (_) => toggleTodo(todo),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        selectedDueDate == null
-                            ? 'Due Date'
-                            : _formatDate(selectedDueDate!),
-                      ),
-                      onPressed: _pickDueDate,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    const Text('Priority'),
-                    const SizedBox(width: 16),
                     Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _priorityOption(label: 'Low', value: 1),
-                          _priorityOption(label: 'Moderate', value: 2),
-                          _priorityOption(label: 'High', value: 3),
+                          Text(
+                            todo.description,
+                            style: TextStyle(
+                              fontWeight: todo.isDone
+                                  ? FontWeight.w400
+                                  : FontWeight.w600,
+                              decoration: todo.isDone
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          _buildTodoMetadataRow(todo),
                         ],
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: addTodo,
-                      child: const Text('Add'),
-                    ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
-          ),
-
-          const Divider(),
-
-          // ================= LIST SECTION =================
-          Expanded(
-            child: todos.isEmpty
-                ? const Center(child: Text('No tasks yet'))
-                : ListView.builder(
-                    itemCount: todos.length,
-                    itemBuilder: (_, index) {
-                      final todo = todos[index];
-                      return ListTile(
-                        leading: Checkbox(
-                          value: todo.isDone == 1,
-                          onChanged: (_) => toggleTodo(todo),
-                        ),
-                        title: Text(
-                          todo.description,
-                          style: TextStyle(
-                            decoration: todo.isDone == 1
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (todo.ref != null) Text('Ref: ${todo.ref}'),
-                            if (todo.dueDate != null)
-                              Text('Due: ${_formatDate(todo.dueDate!)}'),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _priorityLabel(todo.priority),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _confirmDelete(todo),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: showAddDialog,
+        child: const Icon(Icons.add),
       ),
     );
   }
