@@ -1,3 +1,90 @@
+/*
+============================================================
+FILE: todo_page.dart
+============================================================
+
+ROLE FILE INI
+-------------
+Ini adalah UI Layer aplikasi.
+
+Tanggung jawab file ini:
+
+✔ menampilkan daftar todo
+✔ menerima input user
+✔ mengatur state UI
+✔ memanggil operasi database
+
+============================================================
+ARCHITECTURE POSITION
+------------------------------------------------------------
+
+User Interaction
+↓
+TodoPage (UI Layer)
+↓
+Todo Model
+↓
+DBHelper (Database Layer)
+↓
+SQLite
+
+============================================================
+SEPARATION OF CONCERN
+------------------------------------------------------------
+
+UI Layer
+(todo_page.dart)
+
+✔ menampilkan data
+✔ menerima input user
+
+Model Layer
+(todo.dart)
+
+✔ mendefinisikan struktur data
+
+Database Layer
+(db_helper.dart)
+
+✔ CRUD database
+
+============================================================
+STATE MANAGEMENT
+------------------------------------------------------------
+
+State adalah data yang berubah selama aplikasi berjalan.
+
+State utama halaman ini:
+
+List<Todo> todos
+
+Ketika state berubah kita memanggil:
+
+setState()
+
+agar Flutter melakukan rebuild UI.
+
+============================================================
+DATA FLOW
+------------------------------------------------------------
+
+User klik Add
+↓
+Dialog muncul
+↓
+User isi form
+↓
+Todo object dibuat
+↓
+todos.add()
+↓
+setState()
+↓
+UI rebuild
+
+============================================================
+*/
+
 import 'package:flutter/material.dart';
 import '../models/todo.dart';
 
@@ -9,401 +96,428 @@ class TodoPage extends StatefulWidget {
 }
 
 class _TodoPageState extends State<TodoPage> {
-  // =====================================================
-  // CONFIG
-  // =====================================================
-  static const List<String> priorities = ['H', 'M', 'L'];
 
-  static const Map<String, String> priorityLabels = {
-    'H': 'High',
-    'M': 'Medium',
-    'L': 'Low',
-  };
+  /*
+  ============================================================
+  STATE
+  ============================================================
+  */
 
-  String _formatDateId(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-
-    final d = date.day.toString().padLeft(2, '0');
-    final m = months[date.month - 1];
-    final y = date.year;
-
-    return '$d $m $y'; // contoh: 13 Jan 2026
-  }
-
-  // =====================================================
-  // STATE — HB-ExeCon v1
-  // =====================================================
-
-  /// Master list
   List<Todo> todos = [];
 
-  /// ADD (nullable = optional)
-  String? soNumber;
-  String? ref;
+  /*
+  Filter state
+  */
+
+  String filterMode = "all";
+
+  /*
+  Controllers
+  */
+
+  final TextEditingController descController = TextEditingController();
+  final TextEditingController refController = TextEditingController();
+  final TextEditingController soController = TextEditingController();
+
+  /*
+  Metadata state
+  */
+
   String? priority;
   DateTime? dueDate;
   int? progress;
-  String optionalLabel(String label, String? value) {
-    return value == null || value.isEmpty ? '$label (optional)' : label;
-  }
 
-  final String currentUserId = 'local-user';
+  final String currentUserId = "local-user";
 
-  Widget _metaText(String text) {
-    return Text(text, style: const TextStyle(fontSize: 12, color: Colors.grey));
-  }
+  /*
+  ============================================================
+  PRIORITY CONFIG
+  ============================================================
+  */
 
-  Widget _buildTodoMetadataRow(Todo todo) {
-    final textStyle = TextStyle(
-      fontSize: 12,
-      color: todo.isDone ? Colors.grey.shade400 : Colors.grey.shade600,
-    );
+  static const Map<String, String> priorityLabels = {
+    "H": "High",
+    "M": "Medium",
+    "L": "Low",
+  };
 
-    List<Widget> items = [];
-
-    if (todo.soNumber != null && todo.soNumber!.isNotEmpty) {
-      items.add(Text('SO: ${todo.soNumber}', style: textStyle));
-    }
-
-    if (todo.ref != null && todo.ref!.isNotEmpty) {
-      items.add(Text('Ref: ${todo.ref}', style: textStyle));
-    }
-
-    final prLabel = priorityLabels[todo.priority] ?? todo.priority;
-    items.add(Text('Pr: $prLabel', style: textStyle));
-
-    if (todo.dueDate != null) {
-      final d = _formatDateId(todo.dueDate!);
-      items.add(Text('Due: $d', style: textStyle));
-    }
-
-    // =====================
-    // PROGRESS (INI YANG HILANG)
-    // =====================
-    if (todo.progress != null) {
-      items.add(Text('Prog: ${todo.progress}%', style: textStyle));
-    }
-
-    return Wrap(spacing: 12, runSpacing: 4, children: items);
-  }
-
-  /// EDIT
-  Todo? editingTodo;
-  String? editSoNumber;
-  String? editRef;
-  String? editPriority;
-  DateTime? editDueDate;
-  int? editProgress;
-
-  // =====================================================
-  // CONTROLLERS
-  // =====================================================
-
-  final TextEditingController descController = TextEditingController();
-  final TextEditingController soController = TextEditingController();
-  final TextEditingController refController = TextEditingController();
-
-  final TextEditingController editDescController = TextEditingController();
-  final TextEditingController editSoController = TextEditingController();
-  final TextEditingController editRefController = TextEditingController();
-
-  // =====================================================
-  // LIFECYCLE
-  // =====================================================
-
-  @override
-  void dispose() {
-    descController.dispose();
-    refController.dispose();
-    editDescController.dispose();
-    editRefController.dispose();
-    super.dispose();
-  }
-
-  // =====================================================
-  // LOGIC (kosong dulu, asal ADA)
-  // =====================================================
+  /*
+  ============================================================
+  ADD TODO
+  ============================================================
+  */
 
   void addTodo() {
+
     if (descController.text.trim().isEmpty || priority == null) return;
 
+    final todo = Todo(
+      userId: currentUserId,
+      description: descController.text.trim(),
+      soNumber: soController.text,
+      ref: refController.text,
+      priority: priority!,
+      dueDate: dueDate,
+      progress: progress,
+      taskDate: DateTime.now(),
+      isDone: false,
+    );
+
     setState(() {
-      todos.add(
-        Todo(
-          userId: currentUserId,
-          taskDate: DateTime.now(),
-
-          description: descController.text.trim(),
-          soNumber: soNumber,
-          ref: refController.text.trim().isEmpty
-              ? null
-              : refController.text.trim(),
-          priority: priority!,
-          dueDate: dueDate,
-          progress: progress,
-          isDone: false,
-        ),
-      );
-
-      // reset
-      descController.clear();
-      refController.clear();
-      soNumber = null;
-      priority = null;
-      dueDate = null;
-      progress = null;
+      todos.add(todo);
     });
-  }
 
-  void deleteTodo(int index) {
-    setState(() {
-      todos.removeAt(index);
-    });
-  }
-
-  void toggleTodo(Todo todo) {
-    setState(() {
-      todo.isDone = !todo.isDone;
-    });
-  }
-
-  void showAddDialog() {
     descController.clear();
-    soController.clear();
     refController.clear();
+    soController.clear();
+    priority = null;
+    dueDate = null;
+    progress = null;
+  }
+
+  /*
+  ============================================================
+  EDIT TODO
+  ============================================================
+  */
+
+  void editTodo(int index) {
+
+    final todo = todos[index];
+
+    descController.text = todo.description;
+    refController.text = todo.ref ?? "";
+    soController.text = todo.soNumber ?? "";
+    priority = todo.priority;
+    dueDate = todo.dueDate;
+    progress = todo.progress;
 
     showDialog(
       context: context,
       builder: (_) {
-        String? localPriority;
-        DateTime? localDueDate;
-        int? localProgress;
 
-        return StatefulBuilder(
-          builder: (context, setLocal) {
-            return AlertDialog(
-              title: const Text('Add Task'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // =====================
-                    // DESCRIPTION (WAJIB)
-                    // =====================
-                    TextField(
-                      controller: descController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                      ),
-                    ),
+        return AlertDialog(
+          title: const Text("Edit Task"),
+          content: TextField(
+            controller: descController,
+            decoration: const InputDecoration(
+              labelText: "Description",
+            ),
+          ),
+          actions: [
 
-                    const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
 
-                    // =====================
-                    // SO & REF (OPTIONAL, SEJAJAR)clear
-                    // =====================
-                    TextField(
-                      controller: soController,
-                      decoration: const InputDecoration(
-                        labelText: 'SO# (optional)',
-                      ),
-                    ),
+            ElevatedButton(
+              onPressed: () {
 
-                    const SizedBox(height: 8),
+                setState(() {
 
-                    TextField(
-                      controller: refController,
-                      decoration: const InputDecoration(
-                        labelText: 'Ref (optional)',
-                      ),
-                    ),
+                  todo.description = descController.text;
 
-                    const SizedBox(height: 12),
+                });
 
-                    // =====================
-                    // PRIORITY (WAJIB)
-                    // =====================
-                    DropdownButtonFormField<String>(
-                      value: localPriority,
-                      decoration: const InputDecoration(labelText: 'Priority'),
-                      items: const [
-                        DropdownMenuItem(value: 'H', child: Text('High')),
-                        DropdownMenuItem(value: 'M', child: Text('Medium')),
-                        DropdownMenuItem(value: 'L', child: Text('Low')),
-                      ],
-                      onChanged: (v) => setLocal(() => localPriority = v),
-                    ),
+                Navigator.pop(context);
+              },
+              child: const Text("Save"),
+            )
 
-                    const SizedBox(height: 12),
-
-                    // =====================
-                    // DUE DATE (OPTIONAL)
-                    // =====================
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        localDueDate == null
-                            ? 'Due Date (optional)'
-                            : 'Due Date: ${localDueDate!.toIso8601String().substring(0, 10)}',
-                      ),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked != null) {
-                          setLocal(() => localDueDate = picked);
-                        }
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // =====================
-                    // PROGRESS (OPTIONAL)
-                    // =====================
-                    // =====================
-                    // PROGRESS (OPTIONAL)
-                    // =====================
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Progress % (optional)'),
-                        Slider(
-                          value: (localProgress ?? 0).toDouble(),
-                          min: 0,
-                          max: 100,
-                          divisions: 20,
-                          label: '${localProgress ?? 0}%',
-                          onChanged: (v) {
-                            setLocal(() {
-                              localProgress = v.toInt(); // ✅ INI KUNCI
-                            });
-                          },
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text('${localProgress ?? 0}%'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // =====================
-              // ACTIONS
-              // =====================
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    descController.clear();
-                    soController.clear();
-                    refController.clear();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (descController.text.trim().isEmpty ||
-                        localPriority == null) {
-                      return;
-                    }
-
-                    // COMMIT KE STATE PAGE (SATU ARAH)
-
-                    priority = localPriority;
-                    dueDate = localDueDate;
-                    progress = localProgress;
-
-                    soNumber = soController.text.trim().isEmpty
-                        ? null
-                        : soController.text.trim();
-
-                    ref = refController.text.trim().isEmpty
-                        ? null
-                        : refController.text.trim();
-
-                    addTodo();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
+          ],
         );
       },
     );
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
+  /*
+  ============================================================
+  DELETE TODO
+  ============================================================
+  */
+
+  void deleteTodo(int index) {
+
+    setState(() {
+      todos.removeAt(index);
+    });
+
+  }
+
+  /*
+  ============================================================
+  TOGGLE COMPLETE
+  ============================================================
+  */
+
+  void toggleTodo(Todo todo) {
+
+    setState(() {
+      todo.isDone = !todo.isDone;
+    });
+
+  }
+
+  /*
+  ============================================================
+  FILTER FUNCTION
+  ============================================================
+  */
+
+  List<Todo> getFilteredTodos() {
+
+    if (filterMode == "active") {
+      return todos.where((t) => !t.isDone).toList();
+    }
+
+    if (filterMode == "completed") {
+      return todos.where((t) => t.isDone).toList();
+    }
+
+    if (filterMode == "priority") {
+
+      final sorted = [...todos];
+
+      sorted.sort((a,b) => b.priority.compareTo(a.priority));
+
+      return sorted;
+    }
+
+    if (filterMode == "due") {
+
+      final sorted = [...todos];
+
+      sorted.sort((a,b){
+
+        if (a.dueDate == null) return 1;
+        if (b.dueDate == null) return -1;
+
+        return a.dueDate!.compareTo(b.dueDate!);
+      });
+
+      return sorted;
+    }
+
+    return todos;
+  }
+
+  /*
+  ============================================================
+  UI
+  ============================================================
+  */
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('HB-ExeCon v1')),
-      body: todos.isEmpty
-          ? const Center(child: Text('No tasks yet'))
-          : ListView.builder(
-              itemCount: todos.length,
-              itemBuilder: (context, index) {
-                final todo = todos[index];
 
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Checkbox(
+    final filteredTodos = getFilteredTodos();
+
+    return Scaffold(
+
+      appBar: AppBar(
+        title: const Text("HB-ExeCon v1"),
+      ),
+
+      /*
+      ========================================================
+      BODY
+      ========================================================
+      */
+
+      body: Column(
+
+        children: [
+
+          /*
+          FILTER BAR
+          */
+
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+
+            child: Wrap(
+              spacing: 8,
+
+              children: [
+
+                FilterChip(
+                  label: const Text("All"),
+                  selected: filterMode == "all",
+                  onSelected: (_){
+                    setState(() => filterMode = "all");
+                  },
+                ),
+
+                FilterChip(
+                  label: const Text("Active"),
+                  selected: filterMode == "active",
+                  onSelected: (_){
+                    setState(() => filterMode = "active");
+                  },
+                ),
+
+                FilterChip(
+                  label: const Text("Completed"),
+                  selected: filterMode == "completed",
+                  onSelected: (_){
+                    setState(() => filterMode = "completed");
+                  },
+                ),
+
+                FilterChip(
+                  label: const Text("Priority"),
+                  selected: filterMode == "priority",
+                  onSelected: (_){
+                    setState(() => filterMode = "priority");
+                  },
+                ),
+
+                FilterChip(
+                  label: const Text("Due Date"),
+                  selected: filterMode == "due",
+                  onSelected: (_){
+                    setState(() => filterMode = "due");
+                  },
+                ),
+
+              ],
+            ),
+          ),
+
+          /*
+          TODO LIST
+          */
+
+          Expanded(
+
+            child: ListView.builder(
+
+              itemCount: filteredTodos.length,
+
+              itemBuilder: (context, index) {
+
+                final todo = filteredTodos[index];
+
+                return Dismissible(
+
+                  key: Key(todo.hashCode.toString()),
+
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right:20),
+                    child: const Icon(Icons.delete,color:Colors.white),
+                  ),
+
+                  onDismissed: (_){
+
+                    deleteTodo(todos.indexOf(todo));
+
+                  },
+
+                  child: ListTile(
+
+                    leading: Checkbox(
                       value: todo.isDone,
                       onChanged: (_) => toggleTodo(todo),
                     ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            todo.description,
-                            style: TextStyle(
-                              fontWeight: todo.isDone
-                                  ? FontWeight.w400
-                                  : FontWeight.w600,
-                              decoration: todo.isDone
-                                  ? TextDecoration.lineThrough
-                                  : TextDecoration.none,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          _buildTodoMetadataRow(todo),
-                        ],
+
+                    title: Text(
+                      todo.description,
+                      style: TextStyle(
+                        decoration: todo.isDone
+                          ? TextDecoration.lineThrough
+                          : null,
                       ),
                     ),
-                  ],
+
+                    subtitle: Text(
+                      "Pr: ${priorityLabels[todo.priority]}  "
+                      "Prog: ${todo.progress ?? 0}%",
+                    ),
+
+                    onTap: (){
+                      editTodo(todos.indexOf(todo));
+                    },
+
+                  ),
+
                 );
+
               },
+
             ),
+
+          )
+
+        ],
+
+      ),
+
+      /*
+      ========================================================
+      FLOATING BUTTON
+      ========================================================
+      */
+
       floatingActionButton: FloatingActionButton(
-        onPressed: showAddDialog,
+        onPressed: () {
+
+          showDialog(
+
+            context: context,
+
+            builder: (_) {
+
+              return AlertDialog(
+
+                title: const Text("Add Task"),
+
+                content: TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(
+                    labelText: "Description",
+                  ),
+                ),
+
+                actions: [
+
+                  TextButton(
+                    onPressed: (){
+                      Navigator.pop(context);
+                    },
+                    child: const Text("Cancel"),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: (){
+
+                      priority ??= "M";
+                      progress ??= 0;
+
+                      addTodo();
+
+                      Navigator.pop(context);
+
+                    },
+                    child: const Text("Save"),
+                  )
+
+                ],
+
+              );
+
+            },
+
+          );
+
+        },
+
         child: const Icon(Icons.add),
       ),
+
     );
+
   }
 }

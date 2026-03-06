@@ -12,22 +12,22 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ / Android Studio
+# IDE
+.idea/
+.vscode/
 *.iml
 *.ipr
 *.iws
-.idea/
 
-# VS Code
-.vscode/
-
-# Flutter / Dart / Pub
+# Flutter / Dart
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
+.metadata
 .pub/
+.pub-cache/
 /build/
+.packages
 /coverage/
 **/doc/api/
 **/ios/Flutter/.last_build_id
@@ -35,12 +35,15 @@ migrate_working_dir/
 # Web
 *.dart.js
 *.info.json
-*.js
-*.js_
-*.js.deps
 *.js.map
 
 # Android
+/android/.gradle/
+/android/app/build/
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS
+/ios/Pods/
+/ios/.symlinks/
