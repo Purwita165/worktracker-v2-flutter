@@ -135,11 +135,10 @@ class Todo {
   OPTIONAL METADATA
   ========================================================
 
-  soNumber :
-  Saat ini: reference number
+  Sebelumnya: SoNumber
 
-  Future:
-  project id / work order
+  Sekarang:
+  WorkID
 
   ref :
   Saat ini: general reference
@@ -148,7 +147,7 @@ class Todo {
   equipment / location reference
   */
 
-  final String? soNumber;
+  final String? workId;
   final String? ref;
 
   /*
@@ -195,7 +194,7 @@ class Todo {
   progress → work progress / inspection progress
   */
 
-  final int? progress;
+  int? progress;
 
   /*
   ========================================================
@@ -230,7 +229,7 @@ class Todo {
     this.id,
     required this.userId,
     required this.description,
-    this.soNumber,
+    this.workId,
     this.ref,
     required this.priority,
     this.dueDate,
@@ -264,7 +263,7 @@ class Todo {
       'user_id': userId,
       'description': description,
       'priority': priority,
-      'so_number': soNumber,
+      'work_id': workId,
       'ref': ref,
       'due_date': dueDate?.toIso8601String(),
       'progress': progress,
@@ -300,7 +299,7 @@ class Todo {
       userId: map['user_id'],
       description: map['description'],
       priority: map['priority'],
-      soNumber: map['so_number'],
+      workId: map['work_id'],
       ref: map['ref'],
       dueDate: map['due_date'] != null
           ? DateTime.parse(map['due_date'])

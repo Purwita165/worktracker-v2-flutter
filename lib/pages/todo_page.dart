@@ -105,23 +105,11 @@ class _TodoPageState extends State<TodoPage> {
 
   List<Todo> todos = [];
 
-  /*
-  Filter state
-  */
-
   String filterMode = "all";
-
-  /*
-  Controllers
-  */
 
   final TextEditingController descController = TextEditingController();
   final TextEditingController refController = TextEditingController();
-  final TextEditingController soController = TextEditingController();
-
-  /*
-  Metadata state
-  */
+  final TextEditingController workController = TextEditingController();
 
   String? priority;
   DateTime? dueDate;
@@ -154,7 +142,7 @@ class _TodoPageState extends State<TodoPage> {
     final todo = Todo(
       userId: currentUserId,
       description: descController.text.trim(),
-      soNumber: soController.text,
+      workId: workController.text,
       ref: refController.text,
       priority: priority!,
       dueDate: dueDate,
@@ -169,7 +157,7 @@ class _TodoPageState extends State<TodoPage> {
 
     descController.clear();
     refController.clear();
-    soController.clear();
+    workController.clear();
     priority = null;
     dueDate = null;
     progress = null;
@@ -186,11 +174,6 @@ class _TodoPageState extends State<TodoPage> {
     final todo = todos[index];
 
     descController.text = todo.description;
-    refController.text = todo.ref ?? "";
-    soController.text = todo.soNumber ?? "";
-    priority = todo.priority;
-    dueDate = todo.dueDate;
-    progress = todo.progress;
 
     showDialog(
       context: context,
@@ -215,9 +198,7 @@ class _TodoPageState extends State<TodoPage> {
               onPressed: () {
 
                 setState(() {
-
                   todo.description = descController.text;
-
                 });
 
                 Navigator.pop(context);
@@ -275,30 +256,6 @@ class _TodoPageState extends State<TodoPage> {
       return todos.where((t) => t.isDone).toList();
     }
 
-    if (filterMode == "priority") {
-
-      final sorted = [...todos];
-
-      sorted.sort((a,b) => b.priority.compareTo(a.priority));
-
-      return sorted;
-    }
-
-    if (filterMode == "due") {
-
-      final sorted = [...todos];
-
-      sorted.sort((a,b){
-
-        if (a.dueDate == null) return 1;
-        if (b.dueDate == null) return -1;
-
-        return a.dueDate!.compareTo(b.dueDate!);
-      });
-
-      return sorted;
-    }
-
     return todos;
   }
 
@@ -318,12 +275,6 @@ class _TodoPageState extends State<TodoPage> {
       appBar: AppBar(
         title: const Text("HB-ExeCon v1"),
       ),
-
-      /*
-      ========================================================
-      BODY
-      ========================================================
-      */
 
       body: Column(
 
@@ -365,22 +316,6 @@ class _TodoPageState extends State<TodoPage> {
                   },
                 ),
 
-                FilterChip(
-                  label: const Text("Priority"),
-                  selected: filterMode == "priority",
-                  onSelected: (_){
-                    setState(() => filterMode = "priority");
-                  },
-                ),
-
-                FilterChip(
-                  label: const Text("Due Date"),
-                  selected: filterMode == "due",
-                  onSelected: (_){
-                    setState(() => filterMode = "due");
-                  },
-                ),
-
               ],
             ),
           ),
@@ -390,66 +325,67 @@ class _TodoPageState extends State<TodoPage> {
           */
 
           Expanded(
-
-            child: ListView.builder(
-
-              itemCount: filteredTodos.length,
-
-              itemBuilder: (context, index) {
-
-                final todo = filteredTodos[index];
-
-                return Dismissible(
-
-                  key: Key(todo.hashCode.toString()),
-
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right:20),
-                    child: const Icon(Icons.delete,color:Colors.white),
-                  ),
-
-                  onDismissed: (_){
-
-                    deleteTodo(todos.indexOf(todo));
-
-                  },
-
-                  child: ListTile(
-
-                    leading: Checkbox(
-                      value: todo.isDone,
-                      onChanged: (_) => toggleTodo(todo),
-                    ),
-
-                    title: Text(
-                      todo.description,
+            child: filteredTodos.isEmpty
+                ? const Center(
+                    child: Text(
+                      "No tasks yet",
                       style: TextStyle(
-                        decoration: todo.isDone
-                          ? TextDecoration.lineThrough
-                          : null,
+                        fontSize: 18,
+                        color: Colors.grey,
                       ),
                     ),
+                  )
+                : ListView.builder(
+                    itemCount: filteredTodos.length,
+                    itemBuilder: (context, index) {
 
-                    subtitle: Text(
-                      "Pr: ${priorityLabels[todo.priority]}  "
-                      "Prog: ${todo.progress ?? 0}%",
-                    ),
+                      final todo = filteredTodos[index];
 
-                    onTap: (){
-                      editTodo(todos.indexOf(todo));
+                      return Dismissible(
+                        key: Key(todo.hashCode.toString()),
+
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+
+                        onDismissed: (_) {
+                          deleteTodo(todos.indexOf(todo));
+                        },
+
+                        child: ListTile(
+
+                          leading: Checkbox(
+                            value: todo.isDone,
+                            onChanged: (_) => toggleTodo(todo),
+                          ),
+
+                          title: Text(
+                            todo.description,
+                            style: TextStyle(
+                              decoration: todo.isDone
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+
+                          subtitle: Text(
+                            "Pr: ${priorityLabels[todo.priority]}  "
+                            "Prog: ${todo.progress ?? 0}%",
+                          ),
+
+                          onTap: (){
+                            editTodo(todos.indexOf(todo));
+                          },
+
+                        ),
+                      );
+
                     },
-
                   ),
-
-                );
-
-              },
-
-            ),
-
-          )
+          ),
 
         ],
 
@@ -462,6 +398,7 @@ class _TodoPageState extends State<TodoPage> {
       */
 
       floatingActionButton: FloatingActionButton(
+
         onPressed: () {
 
           showDialog(
@@ -515,6 +452,7 @@ class _TodoPageState extends State<TodoPage> {
         },
 
         child: const Icon(Icons.add),
+
       ),
 
     );
