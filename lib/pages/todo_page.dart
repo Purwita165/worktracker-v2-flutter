@@ -201,10 +201,28 @@ class _TodoPageState extends State<TodoPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Delete Task"),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
 
-          content: Text(
-            "Are you sure you want to delete:\n\n${todo.description} ?",
+          title: const Text(
+            "Delete Task",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Are you sure you want to delete this task?"),
+
+              const SizedBox(height: 12),
+
+              Text(
+                todo.description,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
 
           actions: [
@@ -218,9 +236,11 @@ class _TodoPageState extends State<TodoPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
-                await deleteTodo(todo.id!);
+                await dbHelper.deleteTodo(todo.id!);
 
                 Navigator.pop(context);
+
+                loadTodos();
               },
               child: const Text("Delete"),
             ),
