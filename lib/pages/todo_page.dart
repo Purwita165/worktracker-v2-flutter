@@ -746,86 +746,102 @@ DUE DATE FILTER DIALOG
                           todo.dueDate!.isBefore(DateTime.now()) &&
                           !todo.isDone;
 
-                      return ListTile(
-                        onTap: () {
-                          openTaskDialog(todo: todo);
-                        },
-
-                        leading: Checkbox(
-                          value: todo.isDone,
-                          onChanged: (_) => toggleTodo(todo),
+                      return Card(
+                        elevation: 3,
+                        margin: const EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 4,
                         ),
-
-                        title: Text(
-                          todo.description,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isOverdue ? Colors.red : null,
-                            decoration: todo.isDone
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: ListTile(
+                            onTap: () {
+                              openTaskDialog(todo: todo);
+                            },
 
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
+                            leading: Checkbox(
+                              value: todo.isDone,
+                              onChanged: (_) => toggleTodo(todo),
+                            ),
 
-                            Wrap(
-                              spacing: 16,
-                              runSpacing: 4,
+                            title: Text(
+                              todo.description,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isOverdue ? Colors.red : null,
+                                decoration: todo.isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("WorkID: ${todo.workId ?? "-"}"),
+                                const SizedBox(height: 4),
 
-                                Text("Ref: ${todo.ref ?? "-"}"),
+                                Wrap(
+                                  spacing: 16,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text("WorkID: ${todo.workId ?? "-"}"),
 
-                                Text(
-                                  "Priority: ${priorityLabels[todo.priority]}",
-                                  style: TextStyle(
-                                    color: getPriorityColor(todo.priority),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                    Text("Ref: ${todo.ref ?? "-"}"),
+
+                                    Text(
+                                      "Priority: ${priorityLabels[todo.priority]}",
+                                      style: TextStyle(
+                                        color: getPriorityColor(todo.priority),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+
+                                    Text("Progress: ${todo.progress ?? 0}%"),
+
+                                    if (todo.dueDate != null)
+                                      Text(
+                                        "Due: ${todo.dueDate!.toLocal().toString().split(' ')[0]}",
+                                      ),
+                                  ],
                                 ),
 
-                                Text("Progress: ${todo.progress ?? 0}%"),
+                                const SizedBox(height: 6),
 
-                                if (todo.dueDate != null)
-                                  Text(
-                                    "Due: ${todo.dueDate!.toLocal().toString().split(' ')[0]}",
-                                  ),
+                                LinearProgressIndicator(
+                                  value: (todo.progress ?? 0) / 100,
+                                  minHeight: 6,
+                                ),
                               ],
                             ),
 
-                            const SizedBox(height: 6),
-
-                            LinearProgressIndicator(
-                              value: (todo.progress ?? 0) / 100,
-                              minHeight: 6,
-                            ),
-                          ],
-                        ),
-
-                        /*
+                            /*
   EDIT + DELETE BUTTON
   */
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TextButton(
-                              onPressed: () {
-                                openTaskDialog(todo: todo);
-                              },
-                              child: const Text("Edit"),
-                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    openTaskDialog(todo: todo);
+                                  },
+                                  child: const Text("Edit"),
+                                ),
 
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                confirmDelete(todo);
-                              },
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    confirmDelete(todo);
+                                  },
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       );
                     },
