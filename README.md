@@ -6,18 +6,18 @@ The app is designed to help users plan, track, and execute tasks with progress t
 
 Features
 
-• Create and manage tasks
-• Track task progress
-• Set task priorities (Low / Medium / High)
-• Mark tasks as completed
-• Store data locally using SQLite
-• Clean and simple productivity interface
+- Create and manage tasks
+- Track task progress
+- Set task priorities (Low / Medium / High)
+- Mark tasks as completed
+- Store data locally using SQLite
+- Clean and simple productivity interface
 
 Technology Stack
 
-• Flutter
-• Dart
-• SQLite (sqflite)
+- Flutter
+- Dart
+- SQLite (sqflite)
 
 Project Purpose
 
@@ -25,10 +25,10 @@ This project is part of a personal learning journey in Flutter development, focu
 
 Future Improvements
 
-• Context-based task grouping
-• Deadline notifications
-• Task analytics
-• Mobile APK release
+- Context-based task grouping
+- Deadline notifications
+- Task analytics
+- Mobile APK release
 
 ---
 
