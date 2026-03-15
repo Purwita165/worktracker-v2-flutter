@@ -26,6 +26,8 @@ import '../models/todo.dart';
 import '../database/db_helper.dart';
 import 'package:intl/intl.dart';
 
+enum FilterType { all, active, completed, priority, due }
+
 class TodoPage extends StatefulWidget {
   const TodoPage({Key? key}) : super(key: key);
 
@@ -35,6 +37,8 @@ class TodoPage extends StatefulWidget {
 
 class _TodoPageState extends State<TodoPage> {
   final dbHelper = DBHelper.instance;
+
+  FilterType currentFilter = FilterType.active;
 
   List<Todo> todos = [];
   String searchText = "";
@@ -161,6 +165,13 @@ Tidak disimpan ke database (V1).
     await dbHelper.insertTodo(todo);
 
     await loadTodos();
+
+    descController.clear();
+    workController.clear();
+    refController.clear();
+    progress = 0;
+    priority = "M";
+    dueDate = null;
   }
 
   /*
@@ -376,20 +387,31 @@ dueDate = null
         if (t.dueDate!.isAfter(monthLater)) return false;
       }
 
-      /*
-      SEARCH FILTER
-      */
-
-      if (searchText.isNotEmpty) {
-        if (!t.description.toLowerCase().contains(searchText.toLowerCase())) {
-          return false;
-        }
-      }
-
       return true;
     }).toList();
   }
 
+  Widget filterText(String label, FilterType type) {
+    final selected = currentFilter == type;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          currentFilter = type;
+        });
+      },
+      child: Text(
+        label,
+        style: TextStyle(
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          color: selected ? Colors.blue : Colors.black,
+        ),
+      ),
+    );
+  }
+  /*
+      SEARCH FILTER
+      */
   /*
   ============================================================
   TODAY DATE
@@ -483,101 +505,123 @@ Mengambil task yang ditandai sebagai fokus hari ini.
               title: Text(todo == null ? "Add Task" : "Edit Task"),
 
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: descController,
-                      decoration: const InputDecoration(
-                        labelText: "Description",
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: descController,
+                        decoration: const InputDecoration(
+                          labelText: "Description",
+                        ),
                       ),
-                    ),
 
-                    TextField(
-                      controller: workController,
-                      decoration: const InputDecoration(labelText: "WorkID"),
-                    ),
+                      const SizedBox(height: 10),
 
-                    TextField(
-                      controller: refController,
-                      decoration: const InputDecoration(labelText: "Reference"),
-                    ),
+                      TextField(
+                        controller: workController,
+                        decoration: const InputDecoration(labelText: "WorkID"),
+                      ),
 
-                    DropdownButtonFormField<String>(
-                      value: priority,
-                      decoration: const InputDecoration(labelText: "Priority"),
-                      items: const [
-                        DropdownMenuItem(value: "H", child: Text("High")),
-                        DropdownMenuItem(value: "M", child: Text("Medium")),
-                        DropdownMenuItem(value: "L", child: Text("Low")),
-                      ],
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          priority = value;
-                        });
-                      },
-                    ),
+                      const SizedBox(height: 10),
 
-                    const SizedBox(height: 20),
+                      TextField(
+                        controller: refController,
+                        decoration: const InputDecoration(
+                          labelText: "Reference",
+                        ),
+                      ),
 
-                    Text("Progress: $progress%"),
+                      const SizedBox(height: 10),
 
-                    Slider(
-                      value: progress.toDouble(),
-                      min: 0,
-                      max: 100,
-                      divisions: 20,
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          progress = value.toInt();
-                        });
-                      },
-                    ),
+                      DropdownButtonFormField<String>(
+                        value: priority,
+                        decoration: const InputDecoration(
+                          labelText: "Priority",
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: "H", child: Text("High")),
+                          DropdownMenuItem(value: "M", child: Text("Medium")),
+                          DropdownMenuItem(value: "L", child: Text("Low")),
+                        ],
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            priority = value;
+                          });
+                        },
+                      ),
 
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    /*
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Progress: $progress%",
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+
+                      Slider(
+                        value: progress.toDouble(),
+                        min: 0,
+                        max: 100,
+                        divisions: 20,
+                        label: "$progress%",
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            progress = value.toInt();
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      /*
 ============================================================
 DUE DATE PICKER
 ============================================================
 */
-                    Row(
-                      children: [
-                        const Text(
-                          "Due Date:",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            "Due Date:",
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
 
-                        const SizedBox(width: 12),
+                          const SizedBox(width: 12),
 
-                        Text(
-                          dueDate == null
-                              ? "Not set"
-                              : "${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}",
-                        ),
+                          Text(
+                            dueDate == null
+                                ? "Not set"
+                                : "${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}",
+                          ),
 
-                        const Spacer(),
+                          const Spacer(),
 
-                        TextButton(
-                          child: const Text("Pick Date"),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: dueDate ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
+                          TextButton(
+                            child: const Text("Pick Date"),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: dueDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
 
-                            if (picked != null) {
-                              setStateDialog(() {
-                                dueDate = picked;
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+                              if (picked != null) {
+                                setStateDialog(() {
+                                  dueDate = picked;
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -762,6 +806,7 @@ DUE DATE FILTER DIALOG
       appBar: null,
 
       body: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: double.infinity,
@@ -873,48 +918,26 @@ User cukup tekan Enter untuk menyimpan task.
           /*
           FILTER BAR
           */
-          Wrap(
-            spacing: 8,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FilterChip(
-                label: const Text("All"),
-                selected: filterMode == "all",
-                onSelected: (_) {
-                  setState(() => filterMode = "all");
-                },
-              ),
+              filterText("All", FilterType.all),
 
-              FilterChip(
-                label: const Text("Active"),
-                selected: filterMode == "active",
-                onSelected: (_) {
-                  setState(() => filterMode = "active");
-                },
-              ),
+              const Text(" | "),
 
-              FilterChip(
-                label: const Text("Completed"),
-                selected: filterMode == "completed",
-                onSelected: (_) {
-                  setState(() => filterMode = "completed");
-                },
-              ),
+              filterText("Active", FilterType.active),
 
-              FilterChip(
-                label: const Text("Priority"),
-                selected: priorityFilter != null,
-                onSelected: (_) {
-                  showPriorityDialog();
-                },
-              ),
+              const Text(" | "),
 
-              FilterChip(
-                label: const Text("Due Date"),
-                selected: dueFilter != null,
-                onSelected: (_) {
-                  showDueDialog();
-                },
-              ),
+              filterText("Completed", FilterType.completed),
+
+              const Text(" | "),
+
+              filterText("Priority", FilterType.priority),
+
+              const Text(" | "),
+
+              filterText("Due", FilterType.due),
             ],
           ),
 
@@ -928,8 +951,8 @@ Menampilkan task yang dipilih sebagai fokus hari ini.
 */
           if (focusTodos.isNotEmpty) ...[
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
 
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.05),
@@ -942,7 +965,7 @@ Menampilkan task yang dipilih sebagai fokus hari ini.
                 children: [
                   Row(
                     children: const [
-                      Icon(Icons.star, size: 16, color: Colors.orange),
+                      Icon(Icons.star, size: 20, color: Colors.orange),
                       SizedBox(width: 6),
                       Text(
                         "TODAY'S FOCUS",
@@ -957,41 +980,75 @@ Menampilkan task yang dipilih sebagai fokus hari ini.
                   const SizedBox(height: 8),
 
                   ...focusTodos.map((todo) {
-                    return ListTile(
-                      dense: true,
-                      visualDensity: VisualDensity.compact,
+                    final metaText =
+                        "WorkID: ${todo.workId}  "
+                        "Ref: ${todo.ref}  "
+                        "Priority: ${priorityLabels[todo.priority]}  "
+                        "Progress: ${todo.progress}%  "
+                        "Due: ${formatDate(todo.dueDate)}";
 
-                      leading: Checkbox(
-                        value: todo.isDone,
-                        onChanged: (value) {
-                          toggleDone(todo);
-                        },
-                      ),
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          children: [
+                            Checkbox(
+                              value: todo.isDone,
+                              onChanged: (_) => toggleTodo(todo),
+                            ),
 
-                      title: Text(
-                        todo.description,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          decoration: todo.isDone
-                              ? TextDecoration.lineThrough
-                              : null,
+                            GestureDetector(
+                              onTap: () => toggleFocus(todo),
+                              child: Icon(
+                                todayFocusIds.contains(todo.id)
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                size: 18,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
 
-                      trailing: IconButton(
-                        icon: const Icon(
-                          Icons.star,
-                          size: 14,
-                          color: Colors.orange,
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                todo.description,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              Text(metaText),
+                            ],
+                          ),
                         ),
-                        onPressed: () {
-                          toggleFocus(todo);
-                        },
-                      ),
 
-                      onTap: () {
-                        openTaskDialog(todo: todo);
-                      },
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 18),
+                              onPressed: () => openTaskDialog(todo: todo),
+                            ),
+
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                size: 18,
+                                color: Colors.red,
+                              ),
+                              onPressed: () => confirmDelete(todo),
+                            ),
+                          ],
+                        ),
+                      ],
                     );
                   }),
                 ],
@@ -1007,9 +1064,10 @@ Menampilkan task yang dipilih sebagai fokus hari ini.
           Expanded(
             child: filteredTodos.isEmpty
                 ? const Center(
-                    child: Text(
-                      "No tasks yet",
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    child: const Text(
+                      "No tasks yet.\nTap + to add your first task.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
@@ -1042,127 +1100,84 @@ Menampilkan task yang dipilih sebagai fokus hari ini.
                           !todo.isDone;
 
                       return Card(
-                        elevation: 3,
+                        elevation: 2,
                         margin: const EdgeInsets.symmetric(
-                          vertical: 4,
-                          horizontal: 4,
+                          vertical: 2,
+                          horizontal: 6,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: ListTile(
-                            onTap: () {
-                              openTaskDialog(todo: todo);
-                            },
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: todo.isDone,
+                                    onChanged: (_) => toggleTodo(todo),
+                                  ),
 
-                            leading: Checkbox(
-                              value: todo.isDone,
-                              onChanged: (_) => toggleTodo(todo),
-                            ),
-
-                            title: Text(
-                              todo.description,
-                              style: TextStyle(
-                                fontSize: titleSize,
-                                fontWeight: FontWeight.bold,
-                                color: isOverdue ? Colors.red : null,
-                                decoration: todo.isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
+                                  GestureDetector(
+                                    onTap: () => toggleFocus(todo),
+                                    child: Icon(
+                                      todayFocusIds.contains(todo.id)
+                                          ? Icons.star
+                                          : Icons.star_border,
+                                      size: 18,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
 
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
+                              const SizedBox(width: 10),
 
-                                if (todo.isDone)
-                                  Text(
-                                    metaText,
-                                    style: const TextStyle(fontSize: 13),
-                                  )
-                                else
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 2,
-                                    children: [
-                                      Text(
-                                        "WorkID: ${todo.workId}",
-                                        style: const TextStyle(fontSize: 13),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      todo.description,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        decoration: todo.isDone
+                                            ? TextDecoration.lineThrough
+                                            : null,
                                       ),
+                                    ),
 
-                                      Text(
-                                        "Ref: ${todo.ref}",
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
+                                    const SizedBox(height: 4),
 
-                                      Text(
-                                        "Priority: ${priorityLabels[todo.priority]}",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: getPriorityColor(
-                                            todo.priority ?? "M",
-                                          ),
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                    Text(
+                                      metaText,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
-                                      Text(
-                                        "Progress: ${todo.progress}%",
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-
-                                      Text(
-                                        "Due: ${formatDate(todo.dueDate)}",
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ],
+                              Column(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    onPressed: () => openTaskDialog(todo: todo),
                                   ),
 
-                                const SizedBox(height: 8),
-
-                                LinearProgressIndicator(
-                                  value: (todo.progress ?? 0) / 100,
-                                  minHeight: 6,
-                                ),
-                              ],
-                            ),
-
-                            /*
-  EDIT + DELETE BUTTON
-  */
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(
-                                    todayFocusIds.contains(todo.id)
-                                        ? Icons.star
-                                        : Icons.star_border,
-                                    size: 20,
-                                    color: Colors.orange,
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () => confirmDelete(todo),
                                   ),
-                                  onPressed: () => toggleFocus(todo),
-                                ),
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: BoxConstraints(),
-                                  icon: Icon(Icons.edit, size: 20),
-                                  onPressed: () => openTaskDialog(todo: todo),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    size: 20,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => confirmDelete(todo),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       );

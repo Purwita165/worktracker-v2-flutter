@@ -46,13 +46,39 @@ FFI = jembatan antara Dart dan native C library
 */
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+/*
+Digunakan untuk mengecek platform aplikasi.
+
+Supaya kita tahu apakah aplikasi berjalan di:
+- Android
+- iOS
+- Windows
+- Linux
+- Mac
+*/
+import 'dart:io';
+
 import 'pages/todo_page.dart';
 
 void main() {
+  /*
+  ============================================================
+  INITIALIZE FLUTTER BINDING
+  ============================================================
+
+  Dibutuhkan sebelum menggunakan plugin seperti:
+
+  - SQLite
+  - SharedPreferences
+  - Path provider
+
+  Tanpa ini kadang plugin tidak bekerja di Android.
+  */
+  WidgetsFlutterBinding.ensureInitialized();
 
   /*
   ============================================================
-  INITIALIZE SQLITE FOR DESKTOP
+  INITIALIZE SQLITE FOR DESKTOP ONLY
   ============================================================
 
   sqfliteFfiInit()
@@ -63,33 +89,35 @@ void main() {
   2. Menghubungkan SQLite ke Dart runtime
   3. Menyiapkan database engine
 
-  Tanpa ini database tidak bisa dibuat.
+  IMPORTANT:
 
-  Error yang muncul sebelumnya:
-  databaseFactory not initialized
-  */
-  sqfliteFfiInit();
+  Kode ini HANYA boleh dijalankan di Desktop.
 
-
-  /*
-  ============================================================
-  SET DATABASE FACTORY
-  ============================================================
-
-  databaseFactory adalah global variable yang dipakai
-  oleh library sqflite.
-
-  Secara default:
-
-      databaseFactory → Android SQLite
-
-  Di desktop kita ganti menjadi:
-
-      databaseFactoryFfi → SQLite Desktop
+  Android dan iOS sudah punya SQLite sendiri.
   */
 
-  databaseFactory = databaseFactoryFfi;
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
 
+    /*
+    ============================================================
+    SET DATABASE FACTORY FOR DESKTOP
+    ============================================================
+
+    databaseFactory adalah global variable yang dipakai
+    oleh library sqflite.
+
+    Secara default:
+
+        databaseFactory → Android SQLite
+
+    Di desktop kita ganti menjadi:
+
+        databaseFactoryFfi → SQLite Desktop
+    */
+
+    databaseFactory = databaseFactoryFfi;
+  }
 
   /*
   ============================================================
@@ -130,12 +158,10 @@ Todo List UI
 */
 
 class MyApp extends StatelessWidget {
-
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     /*
     MaterialApp adalah wrapper utama aplikasi.
 
@@ -149,7 +175,6 @@ class MyApp extends StatelessWidget {
     */
 
     return MaterialApp(
-
       /*
       Menghilangkan tulisan DEBUG di pojok kanan atas
       */
@@ -158,14 +183,12 @@ class MyApp extends StatelessWidget {
       /*
       Judul aplikasi
       */
-      title: 'Todo App',
+      title: 'WorkTracker',
 
       /*
       Halaman pertama yang dibuka saat aplikasi start
       */
-      home: TodoPage(),
-
+      home: const TodoPage(),
     );
   }
 }
-
