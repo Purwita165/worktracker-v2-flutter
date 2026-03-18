@@ -71,6 +71,13 @@ class TodoCard extends StatelessWidget {
     }
   }
 
+  String getContextLabel() {
+    if (todo.context == "Learning" && todo.subContext != null) {
+      return "${todo.context} • ${todo.subContext}";
+    }
+    return todo.context;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -87,10 +94,7 @@ class TodoCard extends StatelessWidget {
             // ====================================================
             // CHECKBOX
             // ====================================================
-            Checkbox(
-              value: todo.isDone,
-              onChanged: (_) => toggleTodo(todo),
-            ),
+            Checkbox(value: todo.isDone, onChanged: (_) => toggleTodo(todo)),
 
             const SizedBox(width: 8),
 
@@ -126,7 +130,17 @@ class TodoCard extends StatelessWidget {
                               color: Colors.grey,
                             ),
                             children: [
-                              TextSpan(text: "WorkID: ${todo.workId ?? "-"}   "),
+                              TextSpan(
+                                text: "${getContextLabel()}   ",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blueGrey,
+                                ),
+                              ),
+                              TextSpan(
+                                text: "WorkID: ${todo.workId ?? "-"}   ",
+                              ),
+
                               TextSpan(text: "Ref: ${todo.ref ?? "-"}   "),
 
                               TextSpan(
@@ -146,13 +160,21 @@ class TodoCard extends StatelessWidget {
                             ],
                           ),
                         )
-
                       // ===== ACTIVE =====
                       : Text.rich(
                           TextSpan(
                             style: const TextStyle(fontSize: 12),
                             children: [
-                              TextSpan(text: "WorkID: ${todo.workId ?? "-"}   "),
+                              TextSpan(
+                                text: "${getContextLabel()}   ",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              TextSpan(
+                                text: "WorkID: ${todo.workId ?? "-"}   ",
+                              ),
                               TextSpan(text: "Ref: ${todo.ref ?? "-"}   "),
 
                               TextSpan(

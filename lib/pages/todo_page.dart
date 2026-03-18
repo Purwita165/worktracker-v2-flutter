@@ -44,6 +44,7 @@ class _TodoPageState extends State<TodoPage> {
 
   String selectedContext = "Office";
   String? selectedSubContext;
+  String? contextFilter;
 
   final String currentUserId = "local-user";
 
@@ -201,10 +202,18 @@ class _TodoPageState extends State<TodoPage> {
     final query = searchText.toLowerCase();
 
     return todos.where((t) {
+      // ======= SEARCH FILTER ===========
       if (searchText.isNotEmpty) {
         if (!(t.description.toLowerCase().contains(query) ||
             (t.workId ?? "").toLowerCase().contains(query) ||
             (t.ref ?? "").toLowerCase().contains(query))) {
+          return false;
+        }
+      }
+
+      // ================= CONTEXT FILTER =================
+      if (contextFilter != null) {
+        if (t.context != contextFilter) {
           return false;
         }
       }
@@ -404,6 +413,47 @@ class _TodoPageState extends State<TodoPage> {
                 hintText: "Search...",
                 border: OutlineInputBorder(),
               ),
+            ),
+          ),
+
+          // == CONTEXT
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                const Text("Context: "),
+                const SizedBox(width: 10),
+
+                DropdownButton<String?>(
+                  value: contextFilter,
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text("All"),
+                    ),
+                    ...contextOptions.map((c) {
+                      return DropdownMenuItem<String?>(
+                        value: c,
+                        child: Text(c),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      contextFilter = value;
+                    });
+                  },
+                ),
+
+                const SizedBox(width: 20),
+
+                Text(
+                  contextFilter == null
+                      ? "Showing: All"
+                      : "Showing: $contextFilter",
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
             ),
           ),
 
