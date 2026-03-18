@@ -11,6 +11,11 @@ class Todo {
   // Disiapkan untuk future multi-user / sync system
   final String userId;
 
+  //CONTEXT AND SUB CONTEXT
+
+  final String context;
+  final String? subContext;
+
   // ========================================================
   // CORE TASK CONTENT
   // ========================================================
@@ -98,6 +103,8 @@ class Todo {
   Todo({
     this.id,
     required this.userId,
+    required this.context,
+    this.subContext,
     required this.description,
     this.workId,
     this.ref,
@@ -124,6 +131,8 @@ class Todo {
     return {
       'id': id,
       'user_id': userId,
+      'context' : context,
+      'sub_context' : subContext,
       'description': description,
       'priority': priority,
       'work_id': workId,
@@ -149,6 +158,8 @@ class Todo {
   factory Todo.fromMap(Map<String, dynamic> map) {
     return Todo(
       id: map['id'],
+      context: map['context'] ?? 'General',
+      subContext: map['sub_context'],
       userId: map['user_id'],
       description: map['description'],
       priority: map['priority'],
@@ -205,6 +216,8 @@ class Todo {
     return Todo(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      context: context ?? this.context,
+      subContext: subContext ?? this.subContext,
       description: description ?? this.description,
       workId: workId ?? this.workId,
       ref: ref ?? this.ref,

@@ -42,6 +42,9 @@ class _TodoPageState extends State<TodoPage> {
   DateTime? dueDate;
   int progress = 0;
 
+  String selectedContext = "Office";
+  String? selectedSubContext;
+
   final String currentUserId = "local-user";
 
   // ============================================================
@@ -59,6 +62,24 @@ class _TodoPageState extends State<TodoPage> {
       });
     });
   }
+
+  final List<String> contextOptions = [
+    "Office",
+    "Consulting",
+    "Learning",
+    "Private",
+  ];
+
+  final List<String> learningSubContexts = [
+    "English & Communication",
+    "Business Fundamentals",
+    "Operations & Process",
+    "Finance Basics",
+    "Dev Fundamentals",
+    "System Thinking",
+    "Documentation & SOP",
+    "Problem Solving",
+  ];
 
   // ============================================================
   // LOAD DATA
@@ -79,6 +100,8 @@ class _TodoPageState extends State<TodoPage> {
 
     final todo = Todo(
       userId: currentUserId,
+      context: selectedContext,
+      subContext: selectedSubContext,
       description: descController.text.trim(),
       workId: workController.text.isEmpty ? null : workController.text,
       ref: refController.text.isEmpty ? null : refController.text,
@@ -103,6 +126,10 @@ class _TodoPageState extends State<TodoPage> {
     final todo = Todo(
       userId: currentUserId,
       description: text.trim(),
+
+      context: selectedContext,
+      subContext: selectedSubContext,
+
       priority: "M",
       progress: 0,
       status: 'open',
@@ -240,34 +267,100 @@ class _TodoPageState extends State<TodoPage> {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(todo == null ? "Add Task" : "Edit Task"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: descController),
-            TextField(controller: workController),
-            TextField(controller: refController),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (todo == null) {
-                await addTodo();
-              } else {
-                await updateTodo(todo);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(todo == null ? "Add Task" : "Edit Task"),
+
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ✅ CONTEXT DROPDOWN
+                  DropdownButtonFormField<String>(
+                    value: selectedContext,
+                    decoration: const InputDecoration(labelText: "Context"),
+                    items: contextOptions.map((c) {
+                      return DropdownMenuItem(value: c, child: Text(c));
+                    }).toList(),
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        selectedContext = value!;
+                        selectedSubContext = null;
+                      });
+                    },
+                  ),
+
+                  // ================= SUB CONTEXT (HANYA LEARNING) =================
+                  if (selectedContext == "Learning")
+                    Column(
+                      children: [
+                        const SizedBox(height: 10),
+
+                        DropdownButtonFormField<String>(
+                          value: selectedSubContext,
+                          decoration: const InputDecoration(
+                            labelText: "Sub Context",
+                          ),
+                          items: learningSubContexts.map((s) {
+                            return DropdownMenuItem(value: s, child: Text(s));
+                          }).toList(),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              selectedSubContext = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 10),
+
+                  // DESCRIPTION
+                  TextField(
+                    controller: descController,
+                    decoration: const InputDecoration(labelText: "Description"),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // WORK ID
+                  TextField(
+                    controller: workController,
+                    decoration: const InputDecoration(labelText: "WorkID"),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // REF
+                  TextField(
+                    controller: refController,
+                    decoration: const InputDecoration(labelText: "Reference"),
+                  ),
+                ],
+              ),
+
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (todo == null) {
+                      await addTodo();
+                    } else {
+                      await updateTodo(todo);
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -279,9 +372,7 @@ class _TodoPageState extends State<TodoPage> {
     final filteredTodos = getFilteredTodos();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("WorkTracker V2"),
-      ),
+      appBar: AppBar(title: const Text("WorkTracker V2")),
 
       body: Column(
         children: [

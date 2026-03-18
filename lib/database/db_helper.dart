@@ -14,7 +14,7 @@ class DBHelper {
   // DATABASE CONFIG
   // ========================================================
   // Version HARUS naik kalau schema berubah
-  static const int _dbVersion = 5;
+  static const int _dbVersion = 6;
   static const String _dbName = "todo.db";
 
   static Database? _database;
@@ -50,6 +50,10 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE todos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        context TEXT,
+
+        sub_context TEXT,
 
         user_id TEXT,
         description TEXT NOT NULL,
@@ -102,6 +106,12 @@ class DBHelper {
       await db.execute('ALTER TABLE todos ADD COLUMN notes TEXT');
       await db.execute('ALTER TABLE todos ADD COLUMN duration INTEGER');
     }
+
+     if (oldVersion < 6) {
+    await db.execute('ALTER TABLE todos ADD COLUMN context TEXT');
+    await db.execute('ALTER TABLE todos ADD COLUMN sub_context TEXT');
+  }
+
   }
 
   // ========================================================
