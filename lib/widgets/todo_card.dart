@@ -25,6 +25,11 @@ class TodoCard extends StatelessWidget {
   final void Function(Todo) toggleTodo;
   final void Function(Todo) openTaskDialog;
   final void Function(Todo) confirmDelete;
+  // ================= DATA DARI PARENT =================
+  final Map<String, String> priorityLabels;
+  final Color Function(String) getPriorityColor;
+
+  final Color Function(Todo) getStartDateColor;
 
   const TodoCard({
     super.key,
@@ -33,53 +38,14 @@ class TodoCard extends StatelessWidget {
     required this.toggleTodo,
     required this.openTaskDialog,
     required this.confirmDelete,
+    required this.priorityLabels,
+    required this.getPriorityColor,
+    required this.getStartDateColor,
   });
 
   // ============================================================
   // LOCAL HELPER (BIAR TIDAK TERGANTUNG PAGE)
   // ============================================================
-  Color getPriorityColor(String priority) {
-    switch (priority) {
-      case "H":
-        return Colors.red;
-      case "M":
-        return Colors.orange;
-      case "L":
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color getStatusColor(Todo todo) {
-    final now = DateTime.now();
-
-    // ===== OVERDUE (MERAH) =====
-    if (todo.dueDate != null && todo.dueDate!.isBefore(now) && !todo.isDone) {
-      return Colors.red;
-    }
-
-    // ===== LEWAT START DATE (ORANGE) =====
-    if (todo.startDate != null &&
-        todo.startDate!.isBefore(now) &&
-        todo.startedAt == null &&
-        !todo.isDone) {
-      return Colors.orange;
-    }
-
-    // ===== 2 HARI SEBELUM START (HIJAU) =====
-    if (todo.startDate != null) {
-      final twoDaysBefore = todo.startDate!.subtract(const Duration(days: 2));
-
-      if (now.isAfter(twoDaysBefore) &&
-          now.isBefore(todo.startDate!) &&
-          !todo.isDone) {
-        return Colors.green;
-      }
-    }
-
-    return Colors.black;
-  }
 
   String formatDate(DateTime? date) {
     if (date == null) return "-";
@@ -110,6 +76,7 @@ class TodoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -141,7 +108,7 @@ class TodoCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: getStatusColor(todo),
+                      color: isOverdue ? Colors.red : getStartDateColor(todo),
                       decoration: todo.isDone
                           ? TextDecoration.lineThrough
                           : null,
@@ -193,23 +160,19 @@ class TodoCard extends StatelessWidget {
                       // ===== ACTIVE =====
                       : Text.rich(
                           TextSpan(
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 13),
                             children: [
+                              TextSpan(text: "WorkID: ${todo.workId ?? ""}   "),
+                              TextSpan(text: "Ref: ${todo.ref ?? ""}   "),
+
+                              // ✅ TAMBAHAN
                               TextSpan(
-                                text: "${getContextLabel()}   ",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
+                                text: "Start: ${formatDate(todo.startDate)}   ",
                               ),
-                              TextSpan(
-                                text: "WorkID: ${todo.workId ?? "-"}   ",
-                              ),
-                              TextSpan(text: "Ref: ${todo.ref ?? "-"}   "),
 
                               TextSpan(
                                 text:
-                                    "Priority: ${getPriorityLabel(todo.priority)}   ",
+                                    "Priority: ${priorityLabels[todo.priority]}   ",
                                 style: TextStyle(
                                   color: getPriorityColor(todo.priority),
                                   fontWeight: FontWeight.bold,
@@ -217,7 +180,6 @@ class TodoCard extends StatelessWidget {
                               ),
 
                               TextSpan(text: "Progress: ${todo.progress}%   "),
-
                               TextSpan(
                                 text: "Due: ${formatDate(todo.dueDate)}",
                               ),

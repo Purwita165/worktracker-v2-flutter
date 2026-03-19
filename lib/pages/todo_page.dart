@@ -18,6 +18,56 @@ class _TodoPageState extends State<TodoPage> {
 
   List<Todo> todos = [];
 
+  // ================= PRIORITY LABEL =================
+  final Map<String, String> priorityLabels = {
+    "H": "High",
+    "M": "Medium",
+    "L": "Low",
+  };
+
+  // ================= PRIORITY COLOR =================
+  Color getPriorityColor(String priority) {
+    switch (priority) {
+      case "H":
+        return Colors.red;
+      case "M":
+        return Colors.orange;
+      case "L":
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // ================= DATE NORMALIZE =================
+  DateTime normalize(DateTime d) {
+    return DateTime(d.year, d.month, d.day);
+  }
+
+  // ================= START DATE COLOR =================
+  Color getStartDateColor(Todo todo) {
+    if (todo.isDone) return Colors.grey;
+
+    if (todo.startDate == null) return Colors.black;
+
+    final now = normalize(DateTime.now());
+    final start = normalize(todo.startDate!);
+
+    final diff = start.difference(now).inDays;
+
+    // lewat start date tapi belum mulai
+    if (start.isBefore(now) && todo.startedAt == null) {
+      return Colors.orange;
+    }
+
+    // mendekati start date (0–2 hari)
+    if (diff >= 0 && diff <= 2) {
+      return Colors.green;
+    }
+
+    return Colors.black;
+  }
+
   // ============================================================
   // FILTER STATE
   // ============================================================
@@ -329,6 +379,46 @@ class _TodoPageState extends State<TodoPage> {
                       ],
                     ),
 
+                  /// ================= START DATE =================
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      const Text(
+                        "Start Date:",
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Text(
+                        selectedStartDate == null
+                            ? "Not set"
+                            : "${selectedStartDate!.year}-${selectedStartDate!.month.toString().padLeft(2, '0')}-${selectedStartDate!.day.toString().padLeft(2, '0')}",
+                      ),
+
+                      const Spacer(),
+
+                      TextButton(
+                        child: const Text("Pick Date"),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedStartDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+
+                          if (picked != null) {
+                            setStateDialog(() {
+                              selectedStartDate = picked;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 10),
 
                   // DESCRIPTION
@@ -482,6 +572,10 @@ class _TodoPageState extends State<TodoPage> {
                         toggleTodo: toggleTodo,
                         openTaskDialog: openTaskDialog,
                         confirmDelete: (t) => deleteTodo(t.id!),
+
+                        priorityLabels: priorityLabels,
+                        getPriorityColor: getPriorityColor,
+                        getStartDateColor: getStartDateColor, // 👈 INI KUNCI
                       );
                     },
                   ),
