@@ -183,7 +183,7 @@ class DBHelper {
   Future<int> updateTodo(Todo todo) async {
     final db = await database;
 
-    final updatedTodo = todo.copyWith(updatedAt: DateTime.now());
+    final updatedTodo = todo;
 
     return await db.update(
       'todos',

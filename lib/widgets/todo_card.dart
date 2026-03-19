@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../models/todo.dart';
 
 // ============================================================
@@ -13,6 +14,10 @@ String formatDuration(int hours) {
 
   int months = days ~/ 30;
   return "$months months";
+}
+
+DateTime normalize(DateTime d) {
+  return DateTime(d.year, d.month, d.day);
 }
 
 class TodoCard extends StatelessWidget {
@@ -31,6 +36,8 @@ class TodoCard extends StatelessWidget {
 
   final Color Function(Todo) getStartDateColor;
 
+  final Function(Todo) onStart;
+
   const TodoCard({
     super.key,
     required this.todo,
@@ -41,6 +48,7 @@ class TodoCard extends StatelessWidget {
     required this.priorityLabels,
     required this.getPriorityColor,
     required this.getStartDateColor,
+    required this.onStart,
   });
 
   // ============================================================
@@ -74,9 +82,36 @@ class TodoCard extends StatelessWidget {
     return todo.context;
   }
 
+  String getStartDeltaLabel(Todo todo) {
+    if (todo.startDate == null || todo.startedAt == null) return "";
+
+    final start = normalize(todo.startDate!);
+    final started = normalize(todo.startedAt!);
+
+    final diff = started.difference(start).inDays;
+
+    if (diff == 0) return "(on time)";
+    if (diff < 0) return "(${diff.abs()}d early)";
+    return "(+${diff}d late)";
+  }
+
+  Color getStartDeltaColor(Todo todo) {
+    if (todo.startDate == null || todo.startedAt == null) {
+      return Colors.grey;
+    }
+
+    final start = normalize(todo.startDate!);
+    final started = normalize(todo.startedAt!);
+
+    final diff = started.difference(start).inDays;
+
+    if (diff == 0) return Colors.blue; // on time
+    if (diff < 0) return Colors.green; // early
+    return Colors.orange; // late
+  }
+
   @override
   Widget build(BuildContext context) {
-    
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -115,77 +150,36 @@ class TodoCard extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
 
-                  // ================= META =================
-                  todo.isDone
-                      // ===== COMPLETED =====
-                      ? Text.rich(
-                          TextSpan(
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: "${getContextLabel()}   ",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueGrey,
-                                ),
-                              ),
-                              TextSpan(
-                                text: "WorkID: ${todo.workId ?? "-"}   ",
-                              ),
+                  // ================= START DATE =================
+                  if (todo.startDate != null)
+                    Text(
+                      "Start: ${formatDate(todo.startDate)}",
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
 
-                              TextSpan(text: "Ref: ${todo.ref ?? "-"}   "),
+                  // ================= STARTED AT + DELTA =================
+                  if (todo.startedAt != null)
+                    Text(
+                      "Started: ${formatDate(todo.startedAt)} ${getStartDeltaLabel(todo)}",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: getStartDeltaColor(todo),
+                      ),
+                    ),
 
-                              TextSpan(
-                                text:
-                                    "Created: ${formatDate(todo.createdAt)}   ",
-                              ),
+                  const SizedBox(height: 4),
 
-                              TextSpan(
-                                text:
-                                    "Completed: ${formatDate(todo.completedAt)}   ",
-                              ),
-
-                              TextSpan(
-                                text:
-                                    "Duration: ${formatDuration(todo.duration ?? 0)}",
-                              ),
-                            ],
-                          ),
-                        )
-                      // ===== ACTIVE =====
-                      : Text.rich(
-                          TextSpan(
-                            style: const TextStyle(fontSize: 13),
-                            children: [
-                              TextSpan(text: "WorkID: ${todo.workId ?? ""}   "),
-                              TextSpan(text: "Ref: ${todo.ref ?? ""}   "),
-
-                              // ✅ TAMBAHAN
-                              TextSpan(
-                                text: "Start: ${formatDate(todo.startDate)}   ",
-                              ),
-
-                              TextSpan(
-                                text:
-                                    "Priority: ${priorityLabels[todo.priority]}   ",
-                                style: TextStyle(
-                                  color: getPriorityColor(todo.priority),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              TextSpan(text: "Progress: ${todo.progress}%   "),
-                              TextSpan(
-                                text: "Due: ${formatDate(todo.dueDate)}",
-                              ),
-                            ],
-                          ),
-                        ),
+                  // ================= META (yang sudah ada sekarang) =================
+                  Text(
+                    "WorkID: ${todo.workId ?? '-'}   "
+                    "Ref: ${todo.ref ?? '-'}   "
+                    "Priority: ${priorityLabels[todo.priority]}   "
+                    "Progress: ${todo.progress}%   "
+                    "Due: ${formatDate(todo.dueDate)}",
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -195,6 +189,16 @@ class TodoCard extends StatelessWidget {
             // ====================================================
             Column(
               children: [
+                IconButton(
+                  icon: Icon(
+                    todo.startedAt == null ? Icons.play_arrow : Icons.pause,
+                    color: Colors.green,
+                  ),
+                  onPressed: () {
+                    onStart(todo);
+                  },
+                ),
+
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
                   onPressed: () => openTaskDialog(todo),

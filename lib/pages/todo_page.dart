@@ -48,6 +48,11 @@ class _TodoPageState extends State<TodoPage> {
   Color getStartDateColor(Todo todo) {
     if (todo.isDone) return Colors.grey;
 
+    // 🔵 sedang berjalan
+    if (todo.startedAt != null && !todo.isDone) {
+      return Colors.blue;
+    }
+
     if (todo.startDate == null) return Colors.black;
 
     final now = normalize(DateTime.now());
@@ -55,17 +60,27 @@ class _TodoPageState extends State<TodoPage> {
 
     final diff = start.difference(now).inDays;
 
-    // lewat start date tapi belum mulai
-    if (start.isBefore(now) && todo.startedAt == null) {
+    if (start.isBefore(now)) {
       return Colors.orange;
     }
 
-    // mendekati start date (0–2 hari)
     if (diff >= 0 && diff <= 2) {
       return Colors.green;
     }
 
     return Colors.black;
+  }
+
+  Color getStartDeltaColor(Todo todo) {
+    if (todo.startDate == null || todo.startedAt == null) {
+      return Colors.grey;
+    }
+
+    final diff = todo.startedAt!.difference(todo.startDate!);
+
+    if (diff.inDays == 0) return Colors.blue; // on time
+    if (diff.isNegative) return Colors.green; // early
+    return Colors.orange; // late
   }
 
   // ============================================================
@@ -174,6 +189,30 @@ class _TodoPageState extends State<TodoPage> {
     await loadTodos();
   }
 
+  // ================= START TASK =================
+  Future<void> startTask(Todo todo) async {
+    DateTime? newStartedAt;
+
+    if (todo.startedAt == null) {
+      // ▶️ START
+      newStartedAt = DateTime.now();
+    } else {
+      // ⏸ PAUSE
+      newStartedAt = null;
+    }
+
+    final updated = todo.copyWith(startedAt: newStartedAt);
+
+    setState(() {
+      final index = todos.indexWhere((t) => t.id == todo.id);
+      if (index != -1) {
+        todos[index] = updated;
+      }
+    });
+
+    await dbHelper.updateTodo(updated);
+  }
+
   // ============================================================
   // QUICK ADD
   // ============================================================
@@ -211,6 +250,8 @@ class _TodoPageState extends State<TodoPage> {
       priority: priority ?? "M",
       dueDate: dueDate,
       progress: progress,
+
+      startDate: selectedStartDate, // 👈 INI KUNCI
     );
 
     await dbHelper.updateTodo(updated);
@@ -233,11 +274,7 @@ class _TodoPageState extends State<TodoPage> {
 
     final updated = todo.copyWith(
       isDone: newIsDone,
-      status: newIsDone ? 'done' : 'open',
       completedAt: newIsDone ? DateTime.now() : null,
-      duration: newIsDone
-          ? DateTime.now().difference(todo.createdAt).inHours
-          : null,
     );
 
     setState(() {
@@ -315,6 +352,16 @@ class _TodoPageState extends State<TodoPage> {
     return DateFormat('dd-MM-yyyy').format(date);
   }
 
+  String getStartDeltaLabel(Todo todo) {
+    if (todo.startDate == null || todo.startedAt == null) return "";
+
+    final diff = todo.startedAt!.difference(todo.startDate!);
+
+    if (diff.inDays == 0) return "(on time)";
+    if (diff.isNegative) return "(${diff.inDays.abs()}d early)";
+    return "(+${diff.inDays}d)";
+  }
+
   // ============================================================
   // DIALOG
   // ============================================================
@@ -326,8 +373,34 @@ class _TodoPageState extends State<TodoPage> {
       priority = todo.priority;
       dueDate = todo.dueDate;
       progress = todo.progress;
+      Future<void> updateTodo(Todo todo) async {
+        final updated = todo.copyWith(
+          description: descController.text.trim(),
+          workId: workController.text,
+          ref: refController.text,
+          priority: priority ?? "M",
+          dueDate: dueDate,
+          progress: progress,
+
+          startDate: selectedStartDate, // 👈 INI KUNCI
+        );
+
+        await dbHelper.updateTodo(updated);
+        await loadTodos();
+      }
     } else {
       clearForm();
+    }
+    // ================= START TASK =================
+    Future<void> startTask(Todo todo) async {
+      // kalau sudah pernah start → jangan overwrite
+      if (todo.startedAt != null) return;
+
+      final updatedTodo = todo.copyWith(startedAt: DateTime.now());
+
+      await dbHelper.updateTodo(updatedTodo);
+
+      await loadTodos();
     }
 
     showDialog(
@@ -575,7 +648,8 @@ class _TodoPageState extends State<TodoPage> {
 
                         priorityLabels: priorityLabels,
                         getPriorityColor: getPriorityColor,
-                        getStartDateColor: getStartDateColor, // 👈 INI KUNCI
+                        getStartDateColor: getStartDateColor,
+                        onStart: startTask, // 👈 INI KUNCI
                       );
                     },
                   ),
