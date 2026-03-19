@@ -46,6 +46,8 @@ class _TodoPageState extends State<TodoPage> {
   String? selectedSubContext;
   String? contextFilter;
 
+  DateTime? selectedStartDate;
+
   final String currentUserId = "local-user";
 
   // ============================================================
@@ -109,6 +111,10 @@ class _TodoPageState extends State<TodoPage> {
       priority: priority ?? "M",
       dueDate: dueDate,
       progress: progress,
+
+      startDate: selectedStartDate,
+      startedAt: null,
+
       status: 'open',
     );
 

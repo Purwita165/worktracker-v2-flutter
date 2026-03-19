@@ -14,7 +14,8 @@ class DBHelper {
   // DATABASE CONFIG
   // ========================================================
   // Version HARUS naik kalau schema berubah
-  static const int _dbVersion = 6;
+  static const int _dbVersion = 7;
+  
   static const String _dbName = "todo.db";
 
   static Database? _database;
@@ -70,6 +71,11 @@ class DBHelper {
         task_date TEXT,
 
         created_at TEXT,
+
+        start_date TEXT,
+
+        started_at TEXT,
+
         updated_at TEXT,
 
         completed_at TEXT,
@@ -107,11 +113,15 @@ class DBHelper {
       await db.execute('ALTER TABLE todos ADD COLUMN duration INTEGER');
     }
 
-     if (oldVersion < 6) {
-    await db.execute('ALTER TABLE todos ADD COLUMN context TEXT');
-    await db.execute('ALTER TABLE todos ADD COLUMN sub_context TEXT');
-  }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE todos ADD COLUMN context TEXT');
+      await db.execute('ALTER TABLE todos ADD COLUMN sub_context TEXT');
+    }
 
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE todos ADD COLUMN start_date TEXT');
+      await db.execute('ALTER TABLE todos ADD COLUMN started_at TEXT');
+    }
   }
 
   // ========================================================
@@ -157,8 +167,7 @@ class DBHelper {
       'todos',
       {
         'is_done': isDone,
-        'completed_at':
-            isDone == 1 ? DateTime.now().toIso8601String() : null,
+        'completed_at': isDone == 1 ? DateTime.now().toIso8601String() : null,
         'updated_at': DateTime.now().toIso8601String(),
         'status': isDone == 1 ? 'done' : 'open',
       },
@@ -174,9 +183,7 @@ class DBHelper {
   Future<int> updateTodo(Todo todo) async {
     final db = await database;
 
-    final updatedTodo = todo.copyWith(
-      updatedAt: DateTime.now(),
-    );
+    final updatedTodo = todo.copyWith(updatedAt: DateTime.now());
 
     return await db.update(
       'todos',
@@ -192,11 +199,7 @@ class DBHelper {
   Future<int> deleteTodo(int id) async {
     final db = await database;
 
-    return await db.delete(
-      'todos',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('todos', where: 'id = ?', whereArgs: [id]);
   }
 
   // ========================================================

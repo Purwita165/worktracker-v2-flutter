@@ -51,6 +51,36 @@ class TodoCard extends StatelessWidget {
     }
   }
 
+  Color getStatusColor(Todo todo) {
+    final now = DateTime.now();
+
+    // ===== OVERDUE (MERAH) =====
+    if (todo.dueDate != null && todo.dueDate!.isBefore(now) && !todo.isDone) {
+      return Colors.red;
+    }
+
+    // ===== LEWAT START DATE (ORANGE) =====
+    if (todo.startDate != null &&
+        todo.startDate!.isBefore(now) &&
+        todo.startedAt == null &&
+        !todo.isDone) {
+      return Colors.orange;
+    }
+
+    // ===== 2 HARI SEBELUM START (HIJAU) =====
+    if (todo.startDate != null) {
+      final twoDaysBefore = todo.startDate!.subtract(const Duration(days: 2));
+
+      if (now.isAfter(twoDaysBefore) &&
+          now.isBefore(todo.startDate!) &&
+          !todo.isDone) {
+        return Colors.green;
+      }
+    }
+
+    return Colors.black;
+  }
+
   String formatDate(DateTime? date) {
     if (date == null) return "-";
     return "${date.day.toString().padLeft(2, '0')}-"
@@ -111,7 +141,7 @@ class TodoCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: isOverdue ? Colors.red : Colors.black,
+                      color: getStatusColor(todo),
                       decoration: todo.isDone
                           ? TextDecoration.lineThrough
                           : null,

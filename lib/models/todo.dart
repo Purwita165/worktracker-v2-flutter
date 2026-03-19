@@ -63,6 +63,8 @@ class Todo {
   // updatedAt → kapan terakhir diubah
   final DateTime createdAt;
   DateTime? updatedAt;
+  final DateTime? startDate;
+  DateTime? startedAt;
 
   // ========================================================
   // COMPLETION DATA
@@ -120,8 +122,10 @@ class Todo {
     this.status = 'open',
     this.category,
     this.notes,
-  })  : taskDate = taskDate ?? DateTime.now(),
-        createdAt = createdAt ?? DateTime.now();
+    this.startDate,
+    this.startedAt,
+  }) : taskDate = taskDate ?? DateTime.now(),
+       createdAt = createdAt ?? DateTime.now();
 
   // ========================================================
   // OBJECT → MAP (UNTUK DATABASE)
@@ -131,8 +135,8 @@ class Todo {
     return {
       'id': id,
       'user_id': userId,
-      'context' : context,
-      'sub_context' : subContext,
+      'context': context,
+      'sub_context': subContext,
       'description': description,
       'priority': priority,
       'work_id': workId,
@@ -141,6 +145,8 @@ class Todo {
       'progress': progress,
       'task_date': taskDate.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
+      'start_date': startDate?.toIso8601String(),
+      'started_at': startedAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
       'duration': duration,
@@ -165,9 +171,7 @@ class Todo {
       priority: map['priority'],
       workId: map['work_id'],
       ref: map['ref'],
-      dueDate: map['due_date'] != null
-          ? DateTime.parse(map['due_date'])
-          : null,
+      dueDate: map['due_date'] != null ? DateTime.parse(map['due_date']) : null,
       progress: map['progress'] ?? 0,
       taskDate: map['task_date'] != null
           ? DateTime.parse(map['task_date'])
@@ -175,6 +179,15 @@ class Todo {
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
           : DateTime.now(),
+
+      startDate: map['start_date'] != null
+          ? DateTime.parse(map['start_date'])
+          : null,
+
+      startedAt: map['started_at'] != null
+          ? DateTime.parse(map['started_at'])
+          : null,
+
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'])
           : null,
