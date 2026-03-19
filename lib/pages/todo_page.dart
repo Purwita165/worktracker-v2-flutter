@@ -83,6 +83,18 @@ class _TodoPageState extends State<TodoPage> {
     return Colors.orange; // late
   }
 
+  Duration getRunningDuration(Todo todo) {
+    if (todo.startedAt == null) return Duration.zero;
+
+    return DateTime.now().difference(todo.startedAt!);
+  }
+
+  String formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    return "${h}h ${m}m";
+  }
+
   // ============================================================
   // FILTER STATE
   // ============================================================
@@ -250,8 +262,7 @@ class _TodoPageState extends State<TodoPage> {
       priority: priority ?? "M",
       dueDate: dueDate,
       progress: progress,
-
-      startDate: selectedStartDate, // 👈 INI KUNCI
+      startDate: selectedStartDate, // penting
     );
 
     await dbHelper.updateTodo(updated);

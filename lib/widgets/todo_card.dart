@@ -95,6 +95,18 @@ class TodoCard extends StatelessWidget {
     return "(+${diff}d late)";
   }
 
+  Duration getRunningDuration(Todo todo) {
+    if (todo.startedAt == null) return Duration.zero;
+
+    return DateTime.now().difference(todo.startedAt!);
+  }
+
+  String formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    return "${h}h ${m}m";
+  }
+
   Color getStartDeltaColor(Todo todo) {
     if (todo.startDate == null || todo.startedAt == null) {
       return Colors.grey;
@@ -157,6 +169,15 @@ class TodoCard extends StatelessWidget {
                     Text(
                       "Start: ${formatDate(todo.startDate)}",
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+
+                  if (todo.startedAt != null && !todo.isDone)
+                    Text(
+                      "Running: ${formatDuration(getRunningDuration(todo))}",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blueGrey,
+                      ),
                     ),
 
                   // ================= STARTED AT + DELTA =================
