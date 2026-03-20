@@ -204,7 +204,6 @@ class _TodoPageState extends State<TodoPage> {
 
       startDate: selectedStartDate,
       startedAt: null,
-
       status: 'open',
     );
 
@@ -386,6 +385,31 @@ class _TodoPageState extends State<TodoPage> {
     return "(+${diff.inDays}d)";
   }
 
+  Duration getRemainingTime(Todo todo) {
+    if (todo.dueDate == null) return Duration.zero;
+
+    return todo.dueDate!.difference(DateTime.now());
+  }
+
+  String formatRemaining(Duration d) {
+    final isOverdue = d.isNegative;
+
+    final abs = d.abs();
+    final days = abs.inDays;
+    final hours = abs.inHours % 24;
+
+    String result = "";
+
+    if (days > 0) {
+      result = "${days}d ${hours}h";
+    } else {
+      final minutes = abs.inMinutes % 60;
+      result = "${hours}h ${minutes}m";
+    }
+
+    return isOverdue ? "-$result" : result;
+  }
+
   // ============================================================
   // DIALOG
   // ============================================================
@@ -396,7 +420,9 @@ class _TodoPageState extends State<TodoPage> {
       refController.text = todo.ref ?? "";
       priority = todo.priority;
       dueDate = todo.dueDate;
+      selectedStartDate = todo.startDate;
       progress = todo.progress;
+
       Future<void> updateTodo(Todo todo) async {
         final updated = todo.copyWith(
           description: descController.text.trim(),
@@ -405,8 +431,7 @@ class _TodoPageState extends State<TodoPage> {
           priority: priority ?? "M",
           dueDate: dueDate,
           progress: progress,
-
-          startDate: selectedStartDate, // 👈 INI KUNCI
+          startDate: selectedStartDate,
         );
 
         await dbHelper.updateTodo(updated);
@@ -509,6 +534,45 @@ class _TodoPageState extends State<TodoPage> {
                           if (picked != null) {
                             setStateDialog(() {
                               selectedStartDate = picked;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      const Text(
+                        "Due Date:",
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Text(
+                        dueDate == null
+                            ? "Not set"
+                            : "${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}",
+                      ),
+
+                      const Spacer(),
+
+                      TextButton(
+                        child: const Text("Pick Date"),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: dueDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+
+                          if (picked != null) {
+                            setStateDialog(() {
+                              dueDate = picked;
                             });
                           }
                         },
@@ -715,7 +779,11 @@ class _TodoPageState extends State<TodoPage> {
                         priorityLabels: priorityLabels,
                         getPriorityColor: getPriorityColor,
                         getStartDateColor: getStartDateColor,
-                        onStart: startTask, // 👈 INI KUNCI
+
+                        getRemainingTime: getRemainingTime,
+                        formatRemaining: formatRemaining,
+
+                        onStart: startTask,
                       );
                     },
                   ),
