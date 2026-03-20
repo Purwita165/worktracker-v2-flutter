@@ -3,6 +3,7 @@ import '../models/todo.dart';
 import '../database/db_helper.dart';
 import 'package:intl/intl.dart';
 import '../widgets/todo_card.dart';
+import 'dart:async';
 
 enum FilterType { all, active, completed, priority, due }
 
@@ -43,6 +44,8 @@ class _TodoPageState extends State<TodoPage> {
   DateTime normalize(DateTime d) {
     return DateTime(d.year, d.month, d.day);
   }
+
+  Timer? _timer;
 
   // ================= START DATE COLOR =================
   Color getStartDateColor(Todo todo) {
@@ -136,11 +139,21 @@ class _TodoPageState extends State<TodoPage> {
 
     loadTodos();
 
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {});
+    });
+
     quickController.addListener(() {
       setState(() {
         isTypingQuick = quickController.text.isNotEmpty;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   final List<String> contextOptions = [
@@ -525,6 +538,48 @@ class _TodoPageState extends State<TodoPage> {
                   TextField(
                     controller: refController,
                     decoration: const InputDecoration(labelText: "Reference"),
+                  ),
+
+                  // PRIORITY
+                  const SizedBox(height: 10),
+
+                  DropdownButtonFormField<String>(
+                    value: priority ?? "M",
+                    decoration: const InputDecoration(labelText: "Priority"),
+                    items: const [
+                      DropdownMenuItem(value: "H", child: Text("High")),
+                      DropdownMenuItem(value: "M", child: Text("Medium")),
+                      DropdownMenuItem(value: "L", child: Text("Low")),
+                    ],
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        priority = value;
+                      });
+                    },
+                  ),
+
+                  // PROGRESS SLIDER
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      const Text("Progress"),
+                      const SizedBox(width: 10),
+                      Text("$progress%"),
+                    ],
+                  ),
+
+                  Slider(
+                    value: progress.toDouble(),
+                    min: 0,
+                    max: 100,
+                    divisions: 10,
+                    label: "$progress%",
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        progress = value.toInt();
+                      });
+                    },
                   ),
                 ],
               ),

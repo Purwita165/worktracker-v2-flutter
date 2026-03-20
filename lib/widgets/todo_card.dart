@@ -104,7 +104,9 @@ class TodoCard extends StatelessWidget {
   String formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
-    return "${h}h ${m}m";
+    final s = d.inSeconds % 60;
+
+    return "${h}h ${m}m ${s}s";
   }
 
   Color getStartDeltaColor(Todo todo) {
@@ -124,6 +126,7 @@ class TodoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const smallText = TextStyle(fontSize: 12);
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -193,13 +196,47 @@ class TodoCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   // ================= META (yang sudah ada sekarang) =================
-                  Text(
-                    "WorkID: ${todo.workId ?? '-'}   "
-                    "Ref: ${todo.ref ?? '-'}   "
-                    "Priority: ${priorityLabels[todo.priority]}   "
-                    "Progress: ${todo.progress}%   "
-                    "Due: ${formatDate(todo.dueDate)}",
-                    style: const TextStyle(fontSize: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Text("WorkID: ${todo.workId ?? '-'}", style: smallText),
+                      Text("Ref: ${todo.ref ?? '-'}", style: smallText),
+
+                      Text(
+                        "Priority: ${priorityLabels[todo.priority]}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: getPriorityColor(todo.priority),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                "Progress: ${todo.progress}%",
+                                style: smallText,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: todo.progress / 100,
+                            minHeight: 6,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ],
+                      ),
+
+                      Text(
+                        "Due: ${formatDate(todo.dueDate)}",
+                        style: smallText,
+                      ),
+                    ],
                   ),
                 ],
               ),
