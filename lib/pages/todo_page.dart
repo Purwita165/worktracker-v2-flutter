@@ -101,7 +101,7 @@ class _TodoPageState extends State<TodoPage> {
   // ============================================================
   // FILTER STATE
   // ============================================================
-  FilterType currentFilter = FilterType.active;
+  FilterType currentFilter = FilterType.all;
   String searchText = "";
   String? priorityFilter;
   String? dueFilter;
@@ -355,7 +355,10 @@ class _TodoPageState extends State<TodoPage> {
       }
 
       return true;
-    }).toList();
+    }).toList()..sort((a, b) {
+      if (a.isDone == b.isDone) return 0;
+      return a.isDone ? 1 : -1; // completed ke bawah
+    });
   }
 
   // ============================================================
@@ -408,6 +411,39 @@ class _TodoPageState extends State<TodoPage> {
     }
 
     return isOverdue ? "-$result" : result;
+  }
+
+  String getCompletionStatus(Todo todo) {
+    if (todo.completedAt == null || todo.dueDate == null) {
+      return "Status: -";
+    }
+
+    final diff = todo.completedAt!.difference(todo.dueDate!);
+
+    if (diff.inSeconds == 0) {
+      return "Status: On Time";
+    }
+
+    final text = formatRemaining(diff.abs());
+
+    if (diff.isNegative) {
+      return "Status: Early $text";
+    } else {
+      return "Status: Overdue $text";
+    }
+  }
+
+  Color getCompletionStatusColor(Todo todo) {
+    if (todo.completedAt == null || todo.dueDate == null) {
+      return Colors.grey;
+    }
+
+    final diff = todo.completedAt!.difference(todo.dueDate!);
+
+    if (diff.inSeconds == 0) return Colors.blue;
+    if (diff.isNegative) return Colors.green;
+
+    return Colors.red;
   }
 
   // ============================================================
@@ -784,6 +820,9 @@ class _TodoPageState extends State<TodoPage> {
                         formatRemaining: formatRemaining,
 
                         onStart: startTask,
+
+                        getCompletionStatus: getCompletionStatus,
+                        getCompletionStatusColor: getCompletionStatusColor,
                       );
                     },
                   ),

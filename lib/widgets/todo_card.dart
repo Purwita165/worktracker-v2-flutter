@@ -41,6 +41,9 @@ class TodoCard extends StatelessWidget {
   final Duration Function(Todo) getRemainingTime;
   final String Function(Duration) formatRemaining;
 
+  final String Function(Todo) getCompletionStatus;
+  final Color Function(Todo) getCompletionStatusColor;
+
   const TodoCard({
     super.key,
     required this.todo,
@@ -54,6 +57,8 @@ class TodoCard extends StatelessWidget {
     required this.onStart,
     required this.getRemainingTime,
     required this.formatRemaining,
+    required this.getCompletionStatus,
+    required this.getCompletionStatusColor,
   });
 
   // ============================================================
@@ -160,7 +165,9 @@ class TodoCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: isOverdue ? Colors.red : getStartDateColor(todo),
+                      color: todo.isDone
+                          ? Colors.grey
+                          : (isOverdue ? Colors.red : getStartDateColor(todo)),
                       decoration: todo.isDone
                           ? TextDecoration.lineThrough
                           : null,
@@ -170,100 +177,171 @@ class TodoCard extends StatelessWidget {
                   const SizedBox(height: 6),
 
                   // ================= META =================
-                  RichText(
-                    text: TextSpan(
-                      style: smallText.copyWith(color: Colors.black),
+                  if (!todo.isDone)
+                    RichText(
+                      text: TextSpan(
+                        style: smallText.copyWith(color: Colors.black),
+                        children: [
+                          TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
+                          TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
+                          const TextSpan(text: "Priority: "),
+                          TextSpan(
+                            text: priorityLabels[todo.priority] ?? "-",
+                            style: TextStyle(
+                              color: getPriorityColor(todo.priority),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(
+                      "WorkID: ${todo.workId ?? '-'}   "
+                      "Ref: ${todo.ref ?? '-'}   ",
+                      style: smallText,
+                    ),
+
+                  const SizedBox(height: 6),
+
+                  // ================= ACTIVE MODE =================
+                  if (!todo.isDone) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
-                        TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
-                        const TextSpan(text: "Priority: "),
-                        TextSpan(
-                          text: priorityLabels[todo.priority] ?? "-",
-                          style: TextStyle(
-                            color: getPriorityColor(todo.priority),
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (todo.startedAt != null)
+                                Text(
+                                  "Started: ${formatDate(todo.startedAt)} ${getStartDeltaLabel(todo)}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: getStartDeltaColor(todo),
+                                  ),
+                                ),
+
+                              if (todo.dueDate != null)
+                                Text(
+                                  "Due: ${formatDate(todo.dueDate)}",
+                                  style: smallText,
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (todo.startedAt != null)
+                                Text(
+                                  "Running: ${formatDuration(getRunningDuration(todo))}",
+                                  style: smallText,
+                                ),
+
+                              if (todo.dueDate != null)
+                                Text(
+                                  getRemainingTime(todo).isNegative
+                                      ? "Overdue: ${formatRemaining(getRemainingTime(todo))}"
+                                      : "Remaining: ${formatRemaining(getRemainingTime(todo))}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: getRemainingTime(todo).isNegative
+                                        ? Colors.red
+                                        : Colors.green,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
 
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
-                  // ================= TIME GRID =================
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // LEFT
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    // PROGRESS hanya untuk active
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Progress: ${todo.progress}%", style: smallText),
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          value: todo.progress / 100,
+                          minHeight: 6,
+                          borderRadius: BorderRadius.circular(4),
+                          backgroundColor: Colors.grey.shade300,
+                        ),
+                      ],
+                    ),
+                  ]
+                  // ================= COMPLETED MODE =================
+                  else ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ===== ROW 1: WORKID & REF =====
+                        
+
+                        const SizedBox(height: 4),
+
+                        // ===== ROW 2: START & DUE =====
+                        Row(
                           children: [
-                            if (todo.startedAt != null)
-                              Text(
-                                "Started: ${formatDate(todo.startedAt)} ${getStartDeltaLabel(todo)}",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: getStartDeltaColor(
-                                    todo,
-                                  ).withOpacity(0.9),
-                                ),
+                            Expanded(
+                              child: Text(
+                                "Start: ${formatDate(todo.startDate)}",
+                                style: smallText,
                               ),
-
-                            if (todo.dueDate != null)
-                              Text(
+                            ),
+                            Expanded(
+                              child: Text(
                                 "Due: ${formatDate(todo.dueDate)}",
                                 style: smallText,
                               ),
+                            ),
                           ],
                         ),
-                      ),
 
-                      // RIGHT
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 4),
+
+                        // ===== ROW 3: COMPLETED & DURATION =====
+                        Row(
                           children: [
-                            if (todo.startedAt != null && !todo.isDone)
-                              Text(
-                                "Running: ${formatDuration(getRunningDuration(todo))}",
+                            Expanded(
+                              child: Text(
+                                "Completed: ${formatDate(todo.completedAt)}",
+                                style: smallText.copyWith(color: Colors.green),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                todo.startedAt != null &&
+                                        todo.completedAt != null
+                                    ? "Duration: ${formatDuration(todo.completedAt!.difference(todo.startedAt!))}"
+                                    : "Duration: -",
                                 style: smallText,
                               ),
-
-                            if (todo.dueDate != null)
-                              Text(
-                                getRemainingTime(todo).isNegative
-                                    ? "Overdue: ${formatRemaining(getRemainingTime(todo))}"
-                                    : "Remaining: ${formatRemaining(getRemainingTime(todo))}",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: getRemainingTime(todo).isNegative
-                                      ? Colors.red
-                                      : Colors.green,
-                                ),
-                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
 
-                  const SizedBox(height: 8),
+                        const SizedBox(height: 4),
 
-                  // ================= PROGRESS =================
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Progress: ${todo.progress}%", style: smallText),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: todo.progress / 100,
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(4),
-                        backgroundColor: Colors.grey.shade300,
-                      ),
-                    ],
-                  ),
+                        // ===== STATUS (ON TIME / EARLY / LATE) =====
+                        if (todo.startedAt != null && todo.startDate != null)
+                          Text(
+                            getCompletionStatus(todo),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: getCompletionStatusColor(todo),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -271,13 +349,15 @@ class TodoCard extends StatelessWidget {
             // ================= ACTION =================
             Column(
               children: [
-                IconButton(
-                  icon: Icon(
-                    todo.startedAt == null ? Icons.play_arrow : Icons.pause, size:18,
-                    color: Colors.green,
+                if (!todo.isDone)
+                  IconButton(
+                    icon: Icon(
+                      todo.startedAt == null ? Icons.play_arrow : Icons.pause,
+                      size: 18,
+                      color: Colors.green,
+                    ),
+                    onPressed: () => onStart(todo),
                   ),
-                  onPressed: () => onStart(todo),
-                ),
 
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
