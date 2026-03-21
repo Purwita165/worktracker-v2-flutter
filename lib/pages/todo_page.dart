@@ -300,6 +300,9 @@ class _TodoPageState extends State<TodoPage> {
       completedAt: newIsDone ? DateTime.now() : null,
     );
 
+    // 🔥 sinkronisasi status
+    updated.status = newIsDone ? 'done' : 'open';
+
     setState(() {
       final index = todos.indexWhere((t) => t.id == todo.id);
       if (index != -1) {
