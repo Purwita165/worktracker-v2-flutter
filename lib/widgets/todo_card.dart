@@ -1,20 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import '../models/todo.dart';
-
-// ============================================================
-// FORMAT DURATION (HELPER)
-// ============================================================
-// Mengubah jam menjadi format manusiawi
-String formatDuration(int hours) {
-  if (hours < 24) return "$hours hours";
-
-  int days = hours ~/ 24;
-  if (days < 30) return "$days days";
-
-  int months = days ~/ 30;
-  return "$months months";
-}
 
 DateTime normalize(DateTime d) {
   return DateTime(d.year, d.month, d.day);
@@ -24,13 +9,10 @@ class TodoCard extends StatelessWidget {
   final Todo todo;
   final bool isOverdue;
 
-  // ============================================================
-  // ACTIONS (DARI PAGE)
-  // ============================================================
   final void Function(Todo) toggleTodo;
   final void Function(Todo) openTaskDialog;
   final void Function(Todo) confirmDelete;
-  // ================= DATA DARI PARENT =================
+
   final Map<String, String> priorityLabels;
   final Color Function(String) getPriorityColor;
 
@@ -61,10 +43,6 @@ class TodoCard extends StatelessWidget {
     required this.getCompletionStatusColor,
   });
 
-  // ============================================================
-  // LOCAL HELPER (BIAR TIDAK TERGANTUNG PAGE)
-  // ============================================================
-
   String formatDate(DateTime? date) {
     if (date == null) return "-";
     return "${date.day.toString().padLeft(2, '0')}-"
@@ -72,27 +50,14 @@ class TodoCard extends StatelessWidget {
         "${date.year}";
   }
 
-  String getPriorityLabel(String p) {
-    switch (p) {
-      case "H":
-        return "High";
-      case "M":
-        return "Medium";
-      case "L":
-        return "Low";
-      default:
-        return "-";
-    }
+  String formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    final s = d.inSeconds % 60;
+    return "${h}h ${m}m ${s}s";
   }
 
-  String getContextLabel() {
-    if (todo.context == "Learning" && todo.subContext != null) {
-      return "${todo.context} • ${todo.subContext}";
-    }
-    return todo.context;
-  }
-
-  String getStartDeltaLabel(Todo todo) {
+  String getStartDeltaLabel() {
     if (todo.startDate == null || todo.startedAt == null) return "";
 
     final start = normalize(todo.startDate!);
@@ -105,33 +70,21 @@ class TodoCard extends StatelessWidget {
     return "(+${diff}d late)";
   }
 
-  Duration getRunningDuration(Todo todo) {
-    if (todo.startedAt == null) return Duration.zero;
-
-    return DateTime.now().difference(todo.startedAt!);
-  }
-
-  String formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes % 60;
-    final s = d.inSeconds % 60;
-
-    return "${h}h ${m}m ${s}s";
-  }
-
-  Color getStartDeltaColor(Todo todo) {
+  Color getStartDeltaColor() {
     if (todo.startDate == null || todo.startedAt == null) {
       return Colors.grey;
     }
 
-    final start = normalize(todo.startDate!);
-    final started = normalize(todo.startedAt!);
+    final diff = todo.startedAt!.difference(todo.startDate!);
 
-    final diff = started.difference(start).inDays;
+    if (diff.inDays == 0) return Colors.blue;
+    if (diff.isNegative) return Colors.green;
+    return Colors.orange;
+  }
 
-    if (diff == 0) return Colors.blue; // on time
-    if (diff < 0) return Colors.green; // early
-    return Colors.orange; // late
+  Duration getRunningDuration() {
+    if (todo.startedAt == null) return Duration.zero;
+    return DateTime.now().difference(todo.startedAt!);
   }
 
   @override
@@ -142,24 +95,20 @@ class TodoCard extends StatelessWidget {
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-
       child: Padding(
         padding: const EdgeInsets.all(12),
-
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ================= CHECKBOX =================
             Checkbox(value: todo.isDone, onChanged: (_) => toggleTodo(todo)),
 
             const SizedBox(width: 8),
 
-            // ================= CONTENT =================
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ================= TITLE =================
+                  // TITLE
                   Text(
                     todo.description,
                     style: TextStyle(
@@ -176,38 +125,31 @@ class TodoCard extends StatelessWidget {
 
                   const SizedBox(height: 6),
 
-                  // ================= META =================
-                  if (!todo.isDone)
-                    RichText(
-                      text: TextSpan(
-                        style: smallText.copyWith(color: Colors.black),
-                        children: [
-                          TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
-                          TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
-                          const TextSpan(text: "Priority: "),
-                          TextSpan(
-                            text: priorityLabels[todo.priority] ?? "-",
-                            style: TextStyle(
-                              color: getPriorityColor(todo.priority),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                  // META
+                  RichText(
+                    text: TextSpan(
+                      style: smallText.copyWith(
+                        color: todo.isDone ? Colors.grey : Colors.black,
                       ),
-                    )
-                  else
-                    Text(
-                      "WorkID: ${todo.workId ?? '-'}   "
-                      "Ref: ${todo.ref ?? '-'}   ",
-                      style: smallText,
+                      children: [
+                        TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
+                        TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
+                        const TextSpan(text: "Priority: "),
+                        TextSpan(
+                          text: priorityLabels[todo.priority] ?? "-",
+                          style: TextStyle(
+                            color: getPriorityColor(todo.priority),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
 
                   const SizedBox(height: 6),
 
-                  // ================= ACTIVE MODE =================
                   if (!todo.isDone) ...[
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
@@ -215,13 +157,12 @@ class TodoCard extends StatelessWidget {
                             children: [
                               if (todo.startedAt != null)
                                 Text(
-                                  "Started: ${formatDate(todo.startedAt)} ${getStartDeltaLabel(todo)}",
+                                  "Started: ${formatDate(todo.startedAt)} ${getStartDeltaLabel()}",
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: getStartDeltaColor(todo),
+                                    color: getStartDeltaColor(),
                                   ),
                                 ),
-
                               if (todo.dueDate != null)
                                 Text(
                                   "Due: ${formatDate(todo.dueDate)}",
@@ -230,17 +171,15 @@ class TodoCard extends StatelessWidget {
                             ],
                           ),
                         ),
-
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (todo.startedAt != null)
                                 Text(
-                                  "Running: ${formatDuration(getRunningDuration(todo))}",
+                                  "Running: ${formatDuration(getRunningDuration())}",
                                   style: smallText,
                                 ),
-
                               if (todo.dueDate != null)
                                 Text(
                                   getRemainingTime(todo).isNegative
@@ -261,7 +200,6 @@ class TodoCard extends StatelessWidget {
 
                     const SizedBox(height: 8),
 
-                    // PROGRESS hanya untuk active
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -275,18 +213,11 @@ class TodoCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ]
-                  // ================= COMPLETED MODE =================
-                  else ...[
+                  ] else ...[
+                    // COMPLETED MODE (FIXED)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ===== ROW 1: WORKID & REF =====
-                        
-
-                        const SizedBox(height: 4),
-
-                        // ===== ROW 2: START & DUE =====
                         Row(
                           children: [
                             Expanded(
@@ -303,10 +234,7 @@ class TodoCard extends StatelessWidget {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 4),
-
-                        // ===== ROW 3: COMPLETED & DURATION =====
                         Row(
                           children: [
                             Expanded(
@@ -326,19 +254,15 @@ class TodoCard extends StatelessWidget {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 4),
-
-                        // ===== STATUS (ON TIME / EARLY / LATE) =====
-                        if (todo.startedAt != null && todo.startDate != null)
-                          Text(
-                            getCompletionStatus(todo),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: getCompletionStatusColor(todo),
-                            ),
+                        Text(
+                          getCompletionStatus(todo),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: getCompletionStatusColor(todo),
                           ),
+                        ),
                       ],
                     ),
                   ],
@@ -346,7 +270,6 @@ class TodoCard extends StatelessWidget {
               ),
             ),
 
-            // ================= ACTION =================
             Column(
               children: [
                 if (!todo.isDone)
@@ -358,12 +281,10 @@ class TodoCard extends StatelessWidget {
                     ),
                     onPressed: () => onStart(todo),
                   ),
-
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
                   onPressed: () => openTaskDialog(todo),
                 ),
-
                 IconButton(
                   icon: const Icon(Icons.delete, size: 18, color: Colors.red),
                   onPressed: () => confirmDelete(todo),
