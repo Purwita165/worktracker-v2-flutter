@@ -105,6 +105,7 @@ class _TodoPageState extends State<TodoPage> {
   String searchText = "";
   String? priorityFilter;
   String? dueFilter;
+  String? subContextFilter;
 
   // ============================================================
   // FORM CONTROLLERS
@@ -194,7 +195,6 @@ class _TodoPageState extends State<TodoPage> {
     final todo = Todo(
       userId: currentUserId,
       context: selectedContext,
-      subContext: selectedSubContext,
       description: descController.text.trim(),
       workId: workController.text.isEmpty ? null : workController.text,
       ref: refController.text.isEmpty ? null : refController.text,
@@ -205,6 +205,7 @@ class _TodoPageState extends State<TodoPage> {
       startDate: selectedStartDate,
       startedAt: null,
       status: 'open',
+      subContext: subContextFilter,
     );
 
     await dbHelper.insertTodo(todo);
@@ -502,45 +503,46 @@ class _TodoPageState extends State<TodoPage> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ✅ CONTEXT DROPDOWN
-                  DropdownButtonFormField<String>(
-                    value: selectedContext,
-                    decoration: const InputDecoration(labelText: "Context"),
-                    items: contextOptions.map((c) {
-                      return DropdownMenuItem(value: c, child: Text(c));
-                    }).toList(),
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        selectedContext = value!;
-                        selectedSubContext = null;
-                      });
-                    },
-                  ),
+                  // ================= OFFICE MODE =================
+                  if (selectedContext == "Office" &&
+                      subContextFilter == "Project") ...[
+                    const SizedBox(height: 10),
 
-                  // ================= SUB CONTEXT (HANYA LEARNING) =================
-                  if (selectedContext == "Learning")
-                    Column(
-                      children: [
-                        const SizedBox(height: 10),
-
-                        DropdownButtonFormField<String>(
-                          value: selectedSubContext,
-                          decoration: const InputDecoration(
-                            labelText: "Sub Context",
-                          ),
-                          items: learningSubContexts.map((s) {
-                            return DropdownMenuItem(value: s, child: Text(s));
-                          }).toList(),
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              selectedSubContext = value;
-                            });
-                          },
-                        ),
-                      ],
+                    TextField(
+                      controller: workController,
+                      decoration: const InputDecoration(
+                        labelText: "Project Code",
+                      ),
                     ),
 
-                  /// ================= START DATE =================
+                    const SizedBox(height: 10),
+
+                    TextField(
+                      controller: refController,
+                      decoration: const InputDecoration(
+                        labelText: "Sequence | Task",
+                      ),
+                    ),
+                  ],
+
+                  if (selectedContext == "Office" &&
+                      subContextFilter == "General") ...[
+                    const SizedBox(height: 10),
+
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(labelText: "Task"),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    TextField(
+                      controller: refController,
+                      decoration: const InputDecoration(labelText: "Reference"),
+                    ),
+                  ],
+
+                  // ================= START DATE =================
                   const SizedBox(height: 12),
 
                   Row(
@@ -549,17 +551,13 @@ class _TodoPageState extends State<TodoPage> {
                         "Start Date:",
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
-
                       const SizedBox(width: 12),
-
                       Text(
                         selectedStartDate == null
                             ? "Not set"
                             : "${selectedStartDate!.year}-${selectedStartDate!.month.toString().padLeft(2, '0')}-${selectedStartDate!.day.toString().padLeft(2, '0')}",
                       ),
-
                       const Spacer(),
-
                       TextButton(
                         child: const Text("Pick Date"),
                         onPressed: () async {
@@ -580,6 +578,7 @@ class _TodoPageState extends State<TodoPage> {
                     ],
                   ),
 
+                  // ================= DUE DATE =================
                   const SizedBox(height: 12),
 
                   Row(
@@ -588,17 +587,13 @@ class _TodoPageState extends State<TodoPage> {
                         "Due Date:",
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
-
                       const SizedBox(width: 12),
-
                       Text(
                         dueDate == null
                             ? "Not set"
                             : "${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}",
                       ),
-
                       const Spacer(),
-
                       TextButton(
                         child: const Text("Pick Date"),
                         onPressed: () async {
@@ -629,23 +624,7 @@ class _TodoPageState extends State<TodoPage> {
 
                   const SizedBox(height: 10),
 
-                  // WORK ID
-                  TextField(
-                    controller: workController,
-                    decoration: const InputDecoration(labelText: "WorkID"),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // REF
-                  TextField(
-                    controller: refController,
-                    decoration: const InputDecoration(labelText: "Reference"),
-                  ),
-
                   // PRIORITY
-                  const SizedBox(height: 10),
-
                   DropdownButtonFormField<String>(
                     value: priority ?? "M",
                     decoration: const InputDecoration(labelText: "Priority"),
@@ -661,7 +640,7 @@ class _TodoPageState extends State<TodoPage> {
                     },
                   ),
 
-                  // PROGRESS SLIDER
+                  // PROGRESS
                   const SizedBox(height: 12),
 
                   Row(
@@ -782,6 +761,27 @@ class _TodoPageState extends State<TodoPage> {
                     });
                   },
                 ),
+
+                if (contextFilter == "Office")
+                  DropdownButton<String?>(
+                    value: subContextFilter,
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text("All")),
+                      DropdownMenuItem(
+                        value: "Project",
+                        child: Text("Project"),
+                      ),
+                      DropdownMenuItem(
+                        value: "General",
+                        child: Text("General"),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        subContextFilter = value;
+                      });
+                    },
+                  ),
 
                 const SizedBox(width: 20),
 
