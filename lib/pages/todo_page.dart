@@ -19,6 +19,10 @@ class _TodoPageState extends State<TodoPage> {
 
   List<Todo> todos = [];
 
+  // BUKA-TUTUP GROUP PROJECT
+
+  final Map<String, bool> expandedProjects = {};
+
   // ================= PRIORITY LABEL =================
   final Map<String, String> priorityLabels = {
     "H": "High",
@@ -745,6 +749,27 @@ class _TodoPageState extends State<TodoPage> {
   Widget build(BuildContext context) {
     final filteredTodos = getFilteredTodos();
 
+    // ================= GROUPING =================
+    final projectGroups = <String, List<Todo>>{};
+
+    for (var todo in filteredTodos) {
+      if (todo.context == "Office" && todo.subContext == "Project") {
+        final key = todo.workId ?? "No Project";
+
+        projectGroups.putIfAbsent(key, () => []);
+        projectGroups[key]!.add(todo);
+      }
+    }
+
+    // ================= SORT =================
+    for (var entry in projectGroups.entries) {
+      entry.value.sort((a, b) {
+        final aSeq = int.tryParse(a.ref?.split('|').first.trim() ?? '') ?? 0;
+        final bSeq = int.tryParse(b.ref?.split('|').first.trim() ?? '') ?? 0;
+        return aSeq.compareTo(bSeq);
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text("WorkTracker V2")),
 
@@ -870,33 +895,99 @@ class _TodoPageState extends State<TodoPage> {
           Expanded(
             child: filteredTodos.isEmpty
                 ? const Center(child: Text("No tasks"))
+                : subContextFilter == "Project"
+                ? ListView(
+                    children: projectGroups.entries.map((entry) {
+                      final workId = entry.key;
+                      final tasks = entry.value;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                expandedProjects[workId] =
+                                    !(expandedProjects[workId] ?? true);
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    (expandedProjects[workId] ?? true)
+                                        ? Icons.expand_more
+                                        : Icons.chevron_right
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "$workId (${tasks.length})",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          if (expandedProjects[workId] ?? true)
+                            ...tasks.map((todo) {
+                              return TodoCard(
+                                todo: todo,
+                                isOverdue:
+                                    todo.dueDate != null &&
+                                    todo.dueDate!.isBefore(DateTime.now()) &&
+                                    !todo.isDone,
+                                toggleTodo: toggleTodo,
+                                openTaskDialog: (t) =>
+                                    openTaskDialog(t, subContextFilter),
+                                confirmDelete: (t) => deleteTodo(t.id!),
+                                priorityLabels: priorityLabels,
+                                getPriorityColor: getPriorityColor,
+                                getStartDateColor: getStartDateColor,
+
+                                // 🔥 TAMBAHAN WAJIB
+                                onStart: startTask,
+                                getRemainingTime: getRemainingTime,
+                                formatRemaining: formatRemaining,
+                                getCompletionStatus: getCompletionStatus,
+                                getCompletionStatusColor:
+                                    getCompletionStatusColor,
+                              );
+                            }).toList(),
+
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    }).toList(),
+                  )
                 : ListView.builder(
                     itemCount: filteredTodos.length,
                     itemBuilder: (_, i) {
                       final todo = filteredTodos[i];
 
-                      final isOverdue =
-                          todo.dueDate != null &&
-                          todo.dueDate!.isBefore(DateTime.now()) &&
-                          !todo.isDone;
-
                       return TodoCard(
                         todo: todo,
-                        isOverdue: isOverdue,
+                        isOverdue:
+                            todo.dueDate != null &&
+                            todo.dueDate!.isBefore(DateTime.now()) &&
+                            !todo.isDone,
                         toggleTodo: toggleTodo,
                         openTaskDialog: (t) =>
                             openTaskDialog(t, subContextFilter),
                         confirmDelete: (t) => deleteTodo(t.id!),
-
                         priorityLabels: priorityLabels,
                         getPriorityColor: getPriorityColor,
                         getStartDateColor: getStartDateColor,
-
+                        onStart: startTask,
                         getRemainingTime: getRemainingTime,
                         formatRemaining: formatRemaining,
-
-                        onStart: startTask,
-
                         getCompletionStatus: getCompletionStatus,
                         getCompletionStatusColor: getCompletionStatusColor,
                       );
