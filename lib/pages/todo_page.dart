@@ -303,13 +303,14 @@ class _TodoPageState extends State<TodoPage> {
 
       priority: "M",
       progress: 0,
-      status: 'open',
     );
 
     await dbHelper.insertTodo(todo);
 
     quickController.clear();
-    quickFocus.requestFocus();
+    setState(() {
+      isTypingQuick = false;
+    });
 
     await loadTodos();
   }
@@ -734,16 +735,32 @@ class _TodoPageState extends State<TodoPage> {
       body: Column(
         children: [
           // QUICK ADD
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: TextField(
-              controller: quickController,
-              focusNode: quickFocus,
-              onSubmitted: quickAddTask,
-              decoration: const InputDecoration(
-                hintText: "Quick task...",
-                border: OutlineInputBorder(),
-              ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: quickController,
+                    decoration: const InputDecoration(
+                      hintText: "Quick capture...",
+                      border:
+                          InputBorder.none, // penting biar tidak double border
+                    ),
+                  ),
+                ),
+
+                if (isTypingQuick)
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward),
+                    onPressed: () => quickAddTask(quickController.text),
+                  ),
+              ],
             ),
           ),
 
@@ -873,15 +890,13 @@ class _TodoPageState extends State<TodoPage> {
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue.shade900, // 🔵 biru tua
-        onPressed: () => openTaskDialog(null, subContextFilter),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 28, // biar lebih bold terasa
-        ),
-      ),
+      floatingActionButton: isTypingQuick
+          ? null
+          : FloatingActionButton(
+              backgroundColor: Colors.blue.shade900,
+              onPressed: () => openTaskDialog(null, subContextFilter),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
     );
   }
 }
