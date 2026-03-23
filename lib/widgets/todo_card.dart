@@ -144,14 +144,17 @@ class TodoCard extends StatelessWidget {
                         children: [
                           TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
                           TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
-                          const TextSpan(text: "Priority: "),
-                          TextSpan(
-                            text: priorityLabels[todo.priority] ?? "-",
-                            style: TextStyle(
-                              color: getPriorityColor(todo.priority),
-                              fontWeight: FontWeight.bold,
+
+                          if (!todo.isDone) ...[
+                            const TextSpan(text: "Priority: "),
+                            TextSpan(
+                              text: priorityLabels[todo.priority] ?? "-",
+                              style: TextStyle(
+                                color: getPriorityColor(todo.priority),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     )
@@ -300,6 +303,23 @@ class TodoCard extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      // ✅ TAMBAHAN PROGRESS
+                      Text("Progress: ${todo.progress}%", style: smallText),
+
+                      const SizedBox(height: 4),
+
+                      LinearProgressIndicator(
+                        value: (todo.progress ?? 0) / 100,
+                        minHeight: 6,
+                        backgroundColor: Colors.grey.shade300,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors
+                              .blue, // atau Theme.of(context).colorScheme.primary
+                        ),
                       ),
                     ],
                   ] else ...[

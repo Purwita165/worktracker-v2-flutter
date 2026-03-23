@@ -40,6 +40,31 @@ class _TodoPageState extends State<TodoPage> {
     }
   }
 
+  void clearForm() {
+    // ================= TEXT CONTROLLER =================
+    descController.clear();
+    workController.clear();
+    refController.clear();
+
+    sequenceController.clear();
+    taskNameController.clear();
+
+    // ================= DATE =================
+    selectedStartDate = null;
+    selectedDueDate = null;
+
+    // ================= VALUE =================
+    progress = 0;
+    priority = "M"; // default Medium
+
+    // ================= OPTIONAL =================
+    // kalau kamu pakai sub context filter di form
+    // selectedSubContext = null;
+
+    // ================= REFRESH UI =================
+    setState(() {});
+  }
+
   // ================= DATE NORMALIZE =================
   DateTime normalize(DateTime d) {
     return DateTime(d.year, d.month, d.day);
@@ -105,6 +130,7 @@ class _TodoPageState extends State<TodoPage> {
   String searchText = "";
   String? priorityFilter;
   String? dueFilter;
+  String? contextFilter;
   String? subContextFilter;
 
   // ============================================================
@@ -116,6 +142,8 @@ class _TodoPageState extends State<TodoPage> {
   final searchController = TextEditingController();
   final quickController = TextEditingController();
   final FocusNode quickFocus = FocusNode();
+  TextEditingController sequenceController = TextEditingController();
+  TextEditingController taskNameController = TextEditingController();
 
   bool isTypingQuick = false;
 
@@ -123,11 +151,8 @@ class _TodoPageState extends State<TodoPage> {
   DateTime? dueDate;
   int progress = 0;
 
-  String selectedContext = "Office";
-  String? selectedSubContext;
-  String? contextFilter;
-
   DateTime? selectedStartDate;
+  DateTime? selectedDueDate;
 
   final String currentUserId = "local-user";
 
@@ -138,6 +163,11 @@ class _TodoPageState extends State<TodoPage> {
   void initState() {
     super.initState();
 
+    // ✅ SET DEFAULT FILTER DULU
+    contextFilter = "Office";
+    subContextFilter = "Project";
+
+    // ✅ BARU LOAD DATA
     loadTodos();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -182,7 +212,21 @@ class _TodoPageState extends State<TodoPage> {
     final data = await dbHelper.getTodos();
 
     setState(() {
-      todos = data;
+      todos = data.where((t) {
+        // FILTER CONTEXT
+        if (contextFilter != null && t.context != contextFilter) {
+          return false;
+        }
+
+        // FILTER SUBCONTEXT (KHUSUS OFFICE)
+        if (contextFilter == "Office" &&
+            subContextFilter != null &&
+            t.subContext != subContextFilter) {
+          return false;
+        }
+
+        return true;
+      }).toList();
     });
   }
 
@@ -194,10 +238,17 @@ class _TodoPageState extends State<TodoPage> {
 
     final todo = Todo(
       userId: currentUserId,
-      context: selectedContext,
+      context: contextFilter ?? "Office",
+      subContext: subContextFilter,
       description: descController.text.trim(),
       workId: workController.text.isEmpty ? null : workController.text,
-      ref: refController.text.isEmpty ? null : refController.text,
+      ref: (contextFilter == "Office" && subContextFilter == "Project")
+          ? (sequenceController.text.isEmpty && taskNameController.text.isEmpty)
+                ? null
+                : "${sequenceController.text.padLeft(3, '0')}|${taskNameController.text.trim()}"
+          : refController.text.isEmpty
+          ? null
+          : refController.text,
       priority: priority ?? "M",
       dueDate: dueDate,
       progress: progress,
@@ -205,7 +256,6 @@ class _TodoPageState extends State<TodoPage> {
       startDate: selectedStartDate,
       startedAt: null,
       status: 'open',
-      subContext: subContextFilter,
     );
 
     await dbHelper.insertTodo(todo);
@@ -248,8 +298,8 @@ class _TodoPageState extends State<TodoPage> {
       userId: currentUserId,
       description: text.trim(),
 
-      context: selectedContext,
-      subContext: selectedSubContext,
+      context: contextFilter ?? "Office",
+      subContext: subContextFilter,
 
       priority: "M",
       progress: 0,
@@ -368,17 +418,9 @@ class _TodoPageState extends State<TodoPage> {
   // ============================================================
   // HELPERS
   // ============================================================
-  void clearForm() {
-    descController.clear();
-    workController.clear();
-    refController.clear();
-    priority = "M";
-    progress = 0;
-    dueDate = null;
-  }
 
   String formatDate(DateTime? date) {
-    if (date == null) return "-";
+    if (date == null) return "Not set";
     return DateFormat('dd-MM-yyyy').format(date);
   }
 
@@ -453,8 +495,9 @@ class _TodoPageState extends State<TodoPage> {
   // ============================================================
   // DIALOG
   // ============================================================
-  void openTaskDialog(Todo? todo) {
+  void openTaskDialog(Todo? todo, String? currentSubContext) {
     if (todo != null) {
+      // EDIT MODE
       descController.text = todo.description;
       workController.text = todo.workId ?? "";
       refController.text = todo.ref ?? "";
@@ -462,34 +505,9 @@ class _TodoPageState extends State<TodoPage> {
       dueDate = todo.dueDate;
       selectedStartDate = todo.startDate;
       progress = todo.progress;
-
-      Future<void> updateTodo(Todo todo) async {
-        final updated = todo.copyWith(
-          description: descController.text.trim(),
-          workId: workController.text,
-          ref: refController.text,
-          priority: priority ?? "M",
-          dueDate: dueDate,
-          progress: progress,
-          startDate: selectedStartDate,
-        );
-
-        await dbHelper.updateTodo(updated);
-        await loadTodos();
-      }
     } else {
+      // ADD MODE
       clearForm();
-    }
-    // ================= START TASK =================
-    Future<void> startTask(Todo todo) async {
-      // kalau sudah pernah start → jangan overwrite
-      if (todo.startedAt != null) return;
-
-      final updatedTodo = todo.copyWith(startedAt: DateTime.now());
-
-      await dbHelper.updateTodo(updatedTodo);
-
-      await loadTodos();
     }
 
     showDialog(
@@ -504,8 +522,8 @@ class _TodoPageState extends State<TodoPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // ================= OFFICE MODE =================
-                  if (selectedContext == "Office" &&
-                      subContextFilter == "Project") ...[
+                  if (contextFilter == "Office" &&
+                      currentSubContext == "Project") ...[
                     const SizedBox(height: 10),
 
                     TextField(
@@ -517,16 +535,37 @@ class _TodoPageState extends State<TodoPage> {
 
                     const SizedBox(height: 10),
 
-                    TextField(
-                      controller: refController,
-                      decoration: const InputDecoration(
-                        labelText: "Sequence | Task",
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: sequenceController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: "Seq"),
+                          ),
+                        ),
+
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text("|"),
+                        ),
+
+                        Expanded(
+                          flex: 5,
+                          child: TextField(
+                            controller: taskNameController,
+                            decoration: const InputDecoration(
+                              labelText: "Task",
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
 
-                  if (selectedContext == "Office" &&
-                      subContextFilter == "General") ...[
+                  if (contextFilter == "Office" &&
+                      currentSubContext == "General") ...[
                     const SizedBox(height: 10),
 
                     TextField(
@@ -552,11 +591,7 @@ class _TodoPageState extends State<TodoPage> {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        selectedStartDate == null
-                            ? "Not set"
-                            : "${selectedStartDate!.year}-${selectedStartDate!.month.toString().padLeft(2, '0')}-${selectedStartDate!.day.toString().padLeft(2, '0')}",
-                      ),
+                      Text(formatDate(selectedStartDate)),
                       const Spacer(),
                       TextButton(
                         child: const Text("Pick Date"),
@@ -588,11 +623,7 @@ class _TodoPageState extends State<TodoPage> {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        dueDate == null
-                            ? "Not set"
-                            : "${dueDate!.year}-${dueDate!.month.toString().padLeft(2, '0')}-${dueDate!.day.toString().padLeft(2, '0')}",
-                      ),
+                      Text(formatDate(dueDate)),
                       const Spacer(),
                       TextButton(
                         child: const Text("Pick Date"),
@@ -758,15 +789,21 @@ class _TodoPageState extends State<TodoPage> {
                   onChanged: (value) {
                     setState(() {
                       contextFilter = value;
+
+                      // reset subcontext kalau bukan Office
+                      if (value != "Office") {
+                        subContextFilter = null;
+                      }
                     });
+
+                    loadTodos(); // ✅ WAJIB
                   },
                 ),
 
                 if (contextFilter == "Office")
-                  DropdownButton<String?>(
+                  DropdownButton<String>(
                     value: subContextFilter,
                     items: const [
-                      DropdownMenuItem(value: null, child: Text("All")),
                       DropdownMenuItem(
                         value: "Project",
                         child: Text("Project"),
@@ -778,8 +815,10 @@ class _TodoPageState extends State<TodoPage> {
                     ],
                     onChanged: (value) {
                       setState(() {
-                        subContextFilter = value;
+                        subContextFilter = value!;
                       });
+
+                      loadTodos(); // ✅ WAJIB
                     },
                   ),
 
@@ -812,7 +851,8 @@ class _TodoPageState extends State<TodoPage> {
                         todo: todo,
                         isOverdue: isOverdue,
                         toggleTodo: toggleTodo,
-                        openTaskDialog: openTaskDialog,
+                        openTaskDialog: (t) =>
+                            openTaskDialog(t, subContextFilter),
                         confirmDelete: (t) => deleteTodo(t.id!),
 
                         priorityLabels: priorityLabels,
@@ -834,8 +874,13 @@ class _TodoPageState extends State<TodoPage> {
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: () => openTaskDialog(null),
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.blue.shade900, // 🔵 biru tua
+        onPressed: () => openTaskDialog(null, subContextFilter),
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
+          size: 28, // biar lebih bold terasa
+        ),
       ),
     );
   }
