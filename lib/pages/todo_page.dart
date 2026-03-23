@@ -506,6 +506,22 @@ class _TodoPageState extends State<TodoPage> {
       dueDate = todo.dueDate;
       selectedStartDate = todo.startDate;
       progress = todo.progress;
+
+      // 🔥 FIX UNTUK PROJECT (split Sequence | Task)
+      if (todo.context == "Office" &&
+          todo.subContext == "Project" &&
+          todo.ref != null &&
+          todo.ref!.contains("|")) {
+        final index = todo.ref!.indexOf("|");
+
+        sequenceController.text = todo.ref!.substring(0, index).trim();
+
+        taskNameController.text = todo.ref!.substring(index + 1).trim();
+      } else {
+        // clear biar tidak bawa data lama
+        sequenceController.clear();
+        taskNameController.clear();
+      }
     } else {
       // ADD MODE
       clearForm();

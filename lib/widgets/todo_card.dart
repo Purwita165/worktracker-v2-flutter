@@ -50,6 +50,16 @@ class TodoCard extends StatelessWidget {
         "${date.year}";
   }
 
+  String getStartStatus(Todo todo) {
+    if (todo.startDate == null || todo.startedAt == null) return "";
+
+    final diff = todo.startedAt!.difference(todo.startDate!).inDays;
+
+    if (diff == 0) return " (On time)";
+    if (diff > 0) return " (Delay ${diff}d)";
+    return " (Early ${-diff}d)";
+  }
+
   String formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
@@ -265,11 +275,18 @@ class TodoCard extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (todo.startedAt != null)
+                                if (todo.startDate != null)
                                   Text(
-                                    "Started: ${formatDate(todo.startedAt)}",
+                                    "Start: ${formatDate(todo.startDate)}",
                                     style: smallText,
                                   ),
+
+                                if (todo.startedAt != null)
+                                  Text(
+                                    "Started: ${formatDate(todo.startedAt)}${getStartStatus(todo)}",
+                                    style: smallText,
+                                  ),
+
                                 if (todo.dueDate != null)
                                   Text(
                                     "Due: ${formatDate(todo.dueDate)}",
