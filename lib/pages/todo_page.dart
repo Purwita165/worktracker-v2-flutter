@@ -621,10 +621,35 @@ class _TodoPageState extends State<TodoPage> {
     }
   }
 
-  Widget _metaText(String label, String value) {
-    return Text(
-      "$label $value",
-      style: const TextStyle(fontSize: 11, color: Colors.brown),
+  Color getStatusColor(String status) {
+    final s = status.toLowerCase();
+
+    if (s.contains("early")) {
+      return Colors.green;
+    } else if (s.contains("delay")) {
+      return Colors.red;
+    } else if (s.contains("on time")) {
+      return Colors.blue;
+    }
+
+    return Colors.grey;
+  }
+
+  Widget _metaText(String label, String value, {Color? color}) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: "$label ",
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          TextSpan(text: value),
+        ],
+      ),
+      style: TextStyle(
+        fontSize: 11,
+        color: color, // null → ikut DefaultTextStyle
+      ),
     );
   }
 
@@ -633,6 +658,12 @@ class _TodoPageState extends State<TodoPage> {
       padding: EdgeInsets.symmetric(horizontal: 6),
       child: Text("|", style: TextStyle(color: Colors.grey)),
     );
+  }
+
+  Color getProgressColor(int progress) {
+    if (progress >= 80) return Colors.green;
+    if (progress >= 40) return Colors.orange;
+    return Colors.red;
   }
 
   // ============================================================
@@ -1104,7 +1135,6 @@ class _TodoPageState extends State<TodoPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  
                                   if (!expandedProjects.containsKey(workId))
                                     Padding(
                                       padding: const EdgeInsets.only(
@@ -1136,6 +1166,8 @@ class _TodoPageState extends State<TodoPage> {
                                                   ],
                                                 ),
 
+                                                const SizedBox(height: 2),
+
                                                 // ✅ COMPLETED - ROW 2
                                                 Row(
                                                   children: [
@@ -1146,40 +1178,62 @@ class _TodoPageState extends State<TodoPage> {
                                                       actualStr,
                                                     ),
                                                     _divider(),
-                                                    _metaText("Status", status),
+                                                    _metaText(
+                                                      "Status",
+                                                      status,
+                                                      color: getStatusColor(
+                                                        status,
+                                                      ), // 🔥 warna dinamis
+                                                    ),
                                                   ],
                                                 ),
                                               ],
                                             )
-                                          : Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                // ✅ ACTIVE - ROW 1 (Start & Due)
-                                                Row(
-                                                  children: [
-                                                    _metaText(
-                                                      "Start",
-                                                      startStr,
-                                                    ),
-                                                    _divider(),
-                                                    _metaText("Due", dueStr),
-                                                  ],
-                                                ),
+                                          // 🔵 ACTIVE (dibungkus biru)
+                                          : DefaultTextStyle(
+                                              style: const TextStyle(
+                                                color: Colors.blue,
+                                                fontSize: 11,
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  // ✅ ACTIVE - ROW 1
+                                                  Row(
+                                                    children: [
+                                                      _metaText(
+                                                        "Start",
+                                                        startStr,
+                                                      ),
+                                                      _divider(),
+                                                      _metaText("Due", dueStr),
+                                                    ],
+                                                  ),
 
-                                                // ✅ ACTIVE - ROW 2 (Plan, Run, dll)
-                                                Row(
-                                                  children: [
-                                                    _metaText("Plan", planStr),
-                                                    _divider(),
-                                                    _metaText("Run", runStr),
-                                                    _divider(),
-                                                    _metaText("Rem", remStr),
-                                                    _divider(),
-                                                    _metaText("Prog", progStr),
-                                                  ],
-                                                ),
-                                              ],
+                                                  // ✅ ACTIVE - ROW 2
+                                                  Row(
+                                                    children: [
+                                                      _metaText(
+                                                        "Plan",
+                                                        planStr,
+                                                      ),
+                                                      _divider(),
+                                                      _metaText("Run", runStr),
+                                                      _divider(),
+                                                      _metaText("Rem", remStr),
+                                                      _divider(),
+                                                      _metaText(
+                                                        "Prog",
+                                                        progStr,
+                                                        color: getProgressColor(
+                                                          progress,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                     ),
 
