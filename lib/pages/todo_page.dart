@@ -624,7 +624,7 @@ class _TodoPageState extends State<TodoPage> {
   Widget _metaText(String label, String value) {
     return Text(
       "$label $value",
-      style: const TextStyle(fontSize: 11, color: Colors.grey),
+      style: const TextStyle(fontSize: 11, color: Colors.brown),
     );
   }
 
@@ -1104,26 +1104,7 @@ class _TodoPageState extends State<TodoPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (!isDoneProject) ...[
-                                    Text(
-                                      start != null
-                                          ? "Start: ${formatDate(start)}"
-                                          : "Start: -",
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    Text(
-                                      due != null
-                                          ? "Due: ${formatDate(due)}"
-                                          : "Due: -",
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
+                                  
                                   if (!expandedProjects.containsKey(workId))
                                     Padding(
                                       padding: const EdgeInsets.only(
