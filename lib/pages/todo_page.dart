@@ -127,34 +127,6 @@ class _TodoPageState extends State<TodoPage> {
     return "${h}h ${m}m";
   }
 
-  DateTime? getProjectStart(List<Todo> tasks) {
-    DateTime? earliest;
-
-    for (var t in tasks) {
-      if (t.startDate == null) continue;
-
-      if (earliest == null || t.startDate!.isBefore(earliest)) {
-        earliest = t.startDate;
-      }
-    }
-
-    return earliest;
-  }
-
-  DateTime? getProjectDue(List<Todo> tasks) {
-    DateTime? latest;
-
-    for (var t in tasks) {
-      if (t.dueDate == null) continue;
-
-      if (latest == null || t.dueDate!.isAfter(latest)) {
-        latest = t.dueDate;
-      }
-    }
-
-    return latest;
-  }
-
   // ============================================================
   // FILTER STATE
   // ============================================================
@@ -201,6 +173,68 @@ class _TodoPageState extends State<TodoPage> {
     if (hours > 0 && months == 0) result += "${hours}h";
 
     return result.trim().isEmpty ? "0d" : result.trim();
+  }
+
+  DateTime? getProjectStart(List<Todo> tasks) {
+    DateTime? earliest;
+
+    for (final t in tasks) {
+      final d = t.startDate;
+      if (d == null) continue;
+
+      if (earliest == null || d.isBefore(earliest)) {
+        earliest = d;
+      }
+    }
+
+    return earliest;
+  }
+
+  DateTime? getProjectDue(List<Todo> tasks) {
+    DateTime? latest;
+
+    for (final t in tasks) {
+      final d = t.dueDate;
+      if (d == null) continue;
+
+      if (latest == null || d.isAfter(latest)) {
+        latest = d;
+      }
+    }
+
+    return latest;
+  }
+
+  Duration? getPlanDuration(List<Todo> tasks) {
+    final start = getProjectStart(tasks);
+    final due = getProjectDue(tasks);
+
+    if (start == null || due == null) return null;
+    return due.difference(start);
+  }
+
+  Duration? getProjectRunningDuration(List<Todo> tasks) {
+    DateTime? earliestStarted;
+
+    for (final t in tasks) {
+      final d = t.startedAt;
+      if (d == null) continue;
+
+      if (earliestStarted == null || d.isBefore(earliestStarted)) {
+        earliestStarted = d;
+      }
+    }
+
+    if (earliestStarted == null) return null;
+    return DateTime.now().difference(earliestStarted);
+  }
+
+  Duration? getProjectRemainingDuration(List<Todo> tasks) {
+    final due = getProjectDue(tasks);
+    if (due == null) return null;
+
+    final diff = due.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
   }
 
   // ============================================================
@@ -538,15 +572,6 @@ class _TodoPageState extends State<TodoPage> {
     if (diff.isNegative) return Colors.green;
 
     return Colors.red;
-  }
-
-  Duration? getPlanDuration(List<Todo> tasks) {
-    final start = getProjectStart(tasks);
-    final due = getProjectDue(tasks);
-
-    if (start == null || due == null) return null;
-
-    return due.difference(start);
   }
 
   // ============================================================
@@ -955,6 +980,18 @@ class _TodoPageState extends State<TodoPage> {
                       final start = getProjectStart(tasks);
                       final due = getProjectDue(tasks);
                       final plan = getPlanDuration(tasks);
+                      final run = getProjectRunningDuration(tasks);
+                      final rem = getProjectRemainingDuration(tasks);
+                      final planStr = plan != null
+                          ? formatDurationShort(plan)
+                          : "-";
+                      final runStr = run != null
+                          ? formatDurationShort(run)
+                          : "-";
+                      final remStr = rem != null
+                          ? formatDurationShort(rem)
+                          : "-";
+                      final progStr = "${progress}%"; // nanti kita hitung
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1013,10 +1050,11 @@ class _TodoPageState extends State<TodoPage> {
                                     ),
                                   ),
                                   Text(
-                                    "Plan: ${plan != null ? formatDurationShort(plan) : "-"}",
+                                    "Plan: $planStr | Run: $runStr | Rem: $remStr | Prog: $progStr",
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.grey,
+                                      height: 1.3,
                                     ),
                                   ),
                                 ],
