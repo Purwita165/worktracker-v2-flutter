@@ -574,6 +574,67 @@ class _TodoPageState extends State<TodoPage> {
     return Colors.red;
   }
 
+  //COMPLETED PROJECT
+
+  bool isProjectCompleted(List<Todo> tasks) {
+    return tasks.isNotEmpty && tasks.every((t) => t.isDone);
+  }
+
+  DateTime? getProjectCompletedDate(List<Todo> tasks) {
+    DateTime? latest;
+
+    for (final t in tasks) {
+      final d = t.completedAt;
+      if (d == null) continue;
+
+      if (latest == null || d.isAfter(latest)) {
+        latest = d;
+      }
+    }
+
+    return latest;
+  }
+
+  Duration? getActualDuration(List<Todo> tasks) {
+    final start = getProjectStart(tasks);
+    final completed = getProjectCompletedDate(tasks);
+
+    if (start == null || completed == null) return null;
+
+    return completed.difference(start);
+  }
+
+  String getProjectStatus(List<Todo> tasks) {
+    final due = getProjectDue(tasks);
+    final completed = getProjectCompletedDate(tasks);
+
+    if (due == null || completed == null) return "-";
+
+    final diff = completed.difference(due);
+
+    if (diff.inSeconds == 0) return "On Time";
+
+    if (diff.isNegative) {
+      return "Early ${formatDurationShort(diff.abs())}";
+    } else {
+      return "Delay ${formatDurationShort(diff)}";
+    }
+  }
+
+  Widget _metaText(String label, String value) {
+    return Text(
+      "$label $value",
+      style: const TextStyle(fontSize: 11, color: Colors.grey),
+    );
+  }
+
+  Widget _divider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 6),
+      child: Text("|", style: TextStyle(color: Colors.grey)),
+    );
+  }
+
   // ============================================================
   // DIALOG
   // ============================================================
@@ -993,6 +1054,18 @@ class _TodoPageState extends State<TodoPage> {
                           : "-";
                       final progStr = "${progress}%"; // nanti kita hitung
 
+                      final isDoneProject = isProjectCompleted(tasks);
+
+                      final completed = getProjectCompletedDate(tasks);
+                      final actual = getActualDuration(tasks);
+                      final status = getProjectStatus(tasks);
+
+                      final startStr = start != null ? formatDate(start) : "-";
+                      final dueStr = due != null ? formatDate(due) : "-";
+                      final actualStr = actual != null
+                          ? formatDurationShort(actual)
+                          : "-";
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1031,64 +1104,138 @@ class _TodoPageState extends State<TodoPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    start != null
-                                        ? "Start: ${formatDate(start)}"
-                                        : "Start: -",
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
+                                  if (!isDoneProject) ...[
+                                    Text(
+                                      start != null
+                                          ? "Start: ${formatDate(start)}"
+                                          : "Start: -",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    due != null
-                                        ? "Due: ${formatDate(due)}"
-                                        : "Due: -",
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
+                                    Text(
+                                      due != null
+                                          ? "Due: ${formatDate(due)}"
+                                          : "Due: -",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    "Plan: $planStr | Run: $runStr | Rem: $remStr | Prog: $progStr",
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                      height: 1.3,
+                                  ],
+                                  if (!expandedProjects.containsKey(workId))
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 28,
+                                        top: 2,
+                                      ),
+                                      child: isDoneProject
+                                          ? Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                // ✅ COMPLETED - ROW 1
+                                                Row(
+                                                  children: [
+                                                    _metaText(
+                                                      "Start",
+                                                      formatDate(start),
+                                                    ),
+                                                    _divider(),
+                                                    _metaText(
+                                                      "Due",
+                                                      formatDate(due),
+                                                    ),
+                                                    _divider(),
+                                                    _metaText(
+                                                      "Done",
+                                                      formatDate(completed),
+                                                    ),
+                                                  ],
+                                                ),
+
+                                                // ✅ COMPLETED - ROW 2
+                                                Row(
+                                                  children: [
+                                                    _metaText("Plan", planStr),
+                                                    _divider(),
+                                                    _metaText(
+                                                      "Actual",
+                                                      actualStr,
+                                                    ),
+                                                    _divider(),
+                                                    _metaText("Status", status),
+                                                  ],
+                                                ),
+                                              ],
+                                            )
+                                          : Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                // ✅ ACTIVE - ROW 1 (Start & Due)
+                                                Row(
+                                                  children: [
+                                                    _metaText(
+                                                      "Start",
+                                                      startStr,
+                                                    ),
+                                                    _divider(),
+                                                    _metaText("Due", dueStr),
+                                                  ],
+                                                ),
+
+                                                // ✅ ACTIVE - ROW 2 (Plan, Run, dll)
+                                                Row(
+                                                  children: [
+                                                    _metaText("Plan", planStr),
+                                                    _divider(),
+                                                    _metaText("Run", runStr),
+                                                    _divider(),
+                                                    _metaText("Rem", remStr),
+                                                    _divider(),
+                                                    _metaText("Prog", progStr),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
                                     ),
-                                  ),
+
+                                  // ✅ TASKS (HANYA SAAT EXPANDED)
+                                  if (expandedProjects[workId] == true)
+                                    ...tasks.map((todo) {
+                                      return TodoCard(
+                                        todo: todo,
+                                        isOverdue:
+                                            todo.dueDate != null &&
+                                            todo.dueDate!.isBefore(
+                                              DateTime.now(),
+                                            ) &&
+                                            !todo.isDone,
+                                        toggleTodo: toggleTodo,
+                                        openTaskDialog: (t) =>
+                                            openTaskDialog(t, subContextFilter),
+                                        confirmDelete: (t) => deleteTodo(t.id!),
+                                        priorityLabels: priorityLabels,
+                                        getPriorityColor: getPriorityColor,
+                                        getStartDateColor: getStartDateColor,
+
+                                        // 🔥 TAMBAHAN WAJIB
+                                        onStart: startTask,
+                                        getRemainingTime: getRemainingTime,
+                                        formatRemaining: formatRemaining,
+                                        getCompletionStatus:
+                                            getCompletionStatus,
+                                        getCompletionStatusColor:
+                                            getCompletionStatusColor,
+                                      );
+                                    }).toList(),
+
+                                  const SizedBox(height: 12),
                                 ],
                               ),
                             ),
-
-                          // ✅ TASKS (HANYA SAAT EXPANDED)
-                          if (expandedProjects[workId] == true)
-                            ...tasks.map((todo) {
-                              return TodoCard(
-                                todo: todo,
-                                isOverdue:
-                                    todo.dueDate != null &&
-                                    todo.dueDate!.isBefore(DateTime.now()) &&
-                                    !todo.isDone,
-                                toggleTodo: toggleTodo,
-                                openTaskDialog: (t) =>
-                                    openTaskDialog(t, subContextFilter),
-                                confirmDelete: (t) => deleteTodo(t.id!),
-                                priorityLabels: priorityLabels,
-                                getPriorityColor: getPriorityColor,
-                                getStartDateColor: getStartDateColor,
-
-                                // 🔥 TAMBAHAN WAJIB
-                                onStart: startTask,
-                                getRemainingTime: getRemainingTime,
-                                formatRemaining: formatRemaining,
-                                getCompletionStatus: getCompletionStatus,
-                                getCompletionStatusColor:
-                                    getCompletionStatusColor,
-                              );
-                            }).toList(),
-
-                          const SizedBox(height: 12),
                         ],
                       );
                     }).toList(),
