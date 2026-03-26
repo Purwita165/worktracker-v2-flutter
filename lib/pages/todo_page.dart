@@ -127,6 +127,20 @@ class _TodoPageState extends State<TodoPage> {
     return "${h}h ${m}m";
   }
 
+  DateTime? getProjectStart(List<Todo> tasks) {
+    DateTime? earliest;
+
+    for (var t in tasks) {
+      if (t.startDate == null) continue;
+
+      if (earliest == null || t.startDate!.isBefore(earliest)) {
+        earliest = t.startDate;
+      }
+    }
+
+    return earliest;
+  }
+
   // ============================================================
   // FILTER STATE
   // ============================================================
@@ -901,6 +915,8 @@ class _TodoPageState extends State<TodoPage> {
                       final workId = entry.key;
                       final tasks = entry.value;
 
+                      final start = getProjectStart(tasks);
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -908,35 +924,47 @@ class _TodoPageState extends State<TodoPage> {
                             onTap: () {
                               setState(() {
                                 expandedProjects[workId] =
-                                    !(expandedProjects[workId] ?? true);
+                                    !(expandedProjects[workId] ?? false);
                               });
                             },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    (expandedProjects[workId] ?? true)
-                                        ? Icons.expand_more
-                                        : Icons.chevron_right
+                            child: Row(
+                              children: [
+                                Icon(
+                                  expandedProjects[workId] == true
+                                      ? Icons.expand_more
+                                      : Icons.chevron_right,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.folder, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "$workId (${tasks.length})",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    "$workId (${tasks.length})",
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
 
-                          if (expandedProjects[workId] ?? true)
+                          // ✅ START (HANYA SAAT COLLAPSE)
+                          if (expandedProjects[workId] != true)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 28, top: 2),
+                              child: Text(
+                                start != null
+                                    ? "Start: ${formatDate(start)}"
+                                    : "Start: -",
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+
+                          // ✅ TASKS (HANYA SAAT EXPANDED)
+                          if (expandedProjects[workId] == true)
                             ...tasks.map((todo) {
                               return TodoCard(
                                 todo: todo,
