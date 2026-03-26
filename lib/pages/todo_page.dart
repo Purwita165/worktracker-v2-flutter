@@ -141,6 +141,20 @@ class _TodoPageState extends State<TodoPage> {
     return earliest;
   }
 
+  DateTime? getProjectDue(List<Todo> tasks) {
+    DateTime? latest;
+
+    for (var t in tasks) {
+      if (t.dueDate == null) continue;
+
+      if (latest == null || t.dueDate!.isAfter(latest)) {
+        latest = t.dueDate;
+      }
+    }
+
+    return latest;
+  }
+
   // ============================================================
   // FILTER STATE
   // ============================================================
@@ -173,6 +187,21 @@ class _TodoPageState extends State<TodoPage> {
   DateTime? selectedDueDate;
 
   final String currentUserId = "local-user";
+
+  String formatDurationShort(Duration d) {
+    final days = d.inDays;
+    final months = days ~/ 30;
+    final remainingDays = days % 30;
+    final hours = d.inHours % 24;
+
+    String result = "";
+
+    if (months > 0) result += "${months}mo ";
+    if (remainingDays > 0) result += "${remainingDays}d ";
+    if (hours > 0 && months == 0) result += "${hours}h";
+
+    return result.trim().isEmpty ? "0d" : result.trim();
+  }
 
   // ============================================================
   // INIT
@@ -509,6 +538,15 @@ class _TodoPageState extends State<TodoPage> {
     if (diff.isNegative) return Colors.green;
 
     return Colors.red;
+  }
+
+  Duration? getPlanDuration(List<Todo> tasks) {
+    final start = getProjectStart(tasks);
+    final due = getProjectDue(tasks);
+
+    if (start == null || due == null) return null;
+
+    return due.difference(start);
   }
 
   // ============================================================
@@ -914,8 +952,9 @@ class _TodoPageState extends State<TodoPage> {
                     children: projectGroups.entries.map((entry) {
                       final workId = entry.key;
                       final tasks = entry.value;
-
                       final start = getProjectStart(tasks);
+                      final due = getProjectDue(tasks);
+                      final plan = getPlanDuration(tasks);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -952,14 +991,35 @@ class _TodoPageState extends State<TodoPage> {
                           if (expandedProjects[workId] != true)
                             Padding(
                               padding: const EdgeInsets.only(left: 28, top: 2),
-                              child: Text(
-                                start != null
-                                    ? "Start: ${formatDate(start)}"
-                                    : "Start: -",
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    start != null
+                                        ? "Start: ${formatDate(start)}"
+                                        : "Start: -",
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  Text(
+                                    due != null
+                                        ? "Due: ${formatDate(due)}"
+                                        : "Due: -",
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  Text(
+                                    "Plan: ${plan != null ? formatDurationShort(plan) : "-"}",
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
 
