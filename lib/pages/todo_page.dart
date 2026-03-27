@@ -1135,7 +1135,7 @@ class _TodoPageState extends State<TodoPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (!expandedProjects.containsKey(workId))
+                                  if (expandedProjects[workId] != true)
                                     Padding(
                                       padding: const EdgeInsets.only(
                                         left: 28,
