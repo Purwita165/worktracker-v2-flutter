@@ -1066,7 +1066,7 @@ class _TodoPageState extends State<TodoPage> {
                 ? const Center(child: Text("No tasks"))
                 : subContextFilter == "Project"
                 ? ListView(
-                    children: projectGroups.entries.map((entry) {
+                    children: projectGroups.entries.map<Widget>((entry) {
                       final workId = entry.key;
                       final tasks = entry.value;
                       final start = getProjectStart(tasks);
@@ -1074,6 +1074,7 @@ class _TodoPageState extends State<TodoPage> {
                       final plan = getPlanDuration(tasks);
                       final run = getProjectRunningDuration(tasks);
                       final rem = getProjectRemainingDuration(tasks);
+                      final isExpanded = expandedProjects[workId] ?? false;
                       final planStr = plan != null
                           ? formatDurationShort(plan)
                           : "-";
@@ -1100,17 +1101,17 @@ class _TodoPageState extends State<TodoPage> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // ================= HEADER =================
                           GestureDetector(
                             onTap: () {
                               setState(() {
-                                expandedProjects[workId] =
-                                    !(expandedProjects[workId] ?? false);
+                                expandedProjects[workId] = !isExpanded;
                               });
                             },
                             child: Row(
                               children: [
                                 Icon(
-                                  expandedProjects[workId] == true
+                                  isExpanded
                                       ? Icons.expand_more
                                       : Icons.chevron_right,
                                   size: 18,
@@ -1128,149 +1129,121 @@ class _TodoPageState extends State<TodoPage> {
                             ),
                           ),
 
-                          // ✅ START (HANYA SAAT COLLAPSE)
-                          if (expandedProjects[workId] != true)
+                          // ================= COLLAPSE → META =================
+                          if (!isExpanded)
                             Padding(
                               padding: const EdgeInsets.only(left: 28, top: 2),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (expandedProjects[workId] != true)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 28,
-                                        top: 2,
-                                      ),
-                                      child: isDoneProject
-                                          ? Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                // ✅ COMPLETED - ROW 1
-                                                Row(
-                                                  children: [
-                                                    _metaText(
-                                                      "Start",
-                                                      formatDate(start),
-                                                    ),
-                                                    _divider(),
-                                                    _metaText(
-                                                      "Due",
-                                                      formatDate(due),
-                                                    ),
-                                                    _divider(),
-                                                    _metaText(
-                                                      "Done",
-                                                      formatDate(completed),
-                                                    ),
-                                                  ],
-                                                ),
-
-                                                const SizedBox(height: 2),
-
-                                                // ✅ COMPLETED - ROW 2
-                                                Row(
-                                                  children: [
-                                                    _metaText("Plan", planStr),
-                                                    _divider(),
-                                                    _metaText(
-                                                      "Actual",
-                                                      actualStr,
-                                                    ),
-                                                    _divider(),
-                                                    _metaText(
-                                                      "Status",
-                                                      status,
-                                                      color: getStatusColor(
-                                                        status,
-                                                      ), // 🔥 warna dinamis
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            )
-                                          // 🔵 ACTIVE (dibungkus biru)
-                                          : DefaultTextStyle(
-                                              style: const TextStyle(
-                                                color: Colors.blue,
-                                                fontSize: 11,
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  // ✅ ACTIVE - ROW 1
-                                                  Row(
-                                                    children: [
-                                                      _metaText(
-                                                        "Start",
-                                                        startStr,
-                                                      ),
-                                                      _divider(),
-                                                      _metaText("Due", dueStr),
-                                                    ],
-                                                  ),
-
-                                                  // ✅ ACTIVE - ROW 2
-                                                  Row(
-                                                    children: [
-                                                      _metaText(
-                                                        "Plan",
-                                                        planStr,
-                                                      ),
-                                                      _divider(),
-                                                      _metaText("Run", runStr),
-                                                      _divider(),
-                                                      _metaText("Rem", remStr),
-                                                      _divider(),
-                                                      _metaText(
-                                                        "Prog",
-                                                        progStr,
-                                                        color: getProgressColor(
-                                                          progress,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
+                              child: isDoneProject
+                                  ? Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // ROW 1
+                                        Row(
+                                          children: [
+                                            _metaText(
+                                              "Start",
+                                              formatDate(start),
                                             ),
+                                            _divider(),
+                                            _metaText("Due", formatDate(due)),
+                                            _divider(),
+                                            _metaText(
+                                              "Done",
+                                              formatDate(completed),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        // ROW 2
+                                        Row(
+                                          children: [
+                                            _metaText("Plan", planStr),
+                                            _divider(),
+                                            _metaText("Actual", actualStr),
+                                            _divider(),
+                                            _metaText(
+                                              "Status",
+                                              status,
+                                              color: getStatusColor(status),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    )
+                                  : DefaultTextStyle(
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 11,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // ROW 1
+                                          Row(
+                                            children: [
+                                              _metaText("Start", startStr),
+                                              _divider(),
+                                              _metaText("Due", dueStr),
+                                            ],
+                                          ),
+                                          // ROW 2
+                                          Row(
+                                            children: [
+                                              _metaText("Plan", planStr),
+                                              _divider(),
+                                              _metaText("Run", runStr),
+                                              _divider(),
+                                              _metaText("Rem", remStr),
+                                              _divider(),
+                                              _metaText(
+                                                "Prog",
+                                                progStr,
+                                                color: getProgressColor(
+                                                  progress,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
+                            ),
 
-                                  // ✅ TASKS (HANYA SAAT EXPANDED)
-                                  if (expandedProjects[workId] == true)
-                                    ...tasks.map((todo) {
-                                      return TodoCard(
-                                        todo: todo,
-                                        isOverdue:
-                                            todo.dueDate != null &&
-                                            todo.dueDate!.isBefore(
-                                              DateTime.now(),
-                                            ) &&
-                                            !todo.isDone,
-                                        toggleTodo: toggleTodo,
-                                        openTaskDialog: (t) =>
-                                            openTaskDialog(t, subContextFilter),
-                                        confirmDelete: (t) => deleteTodo(t.id!),
-                                        priorityLabels: priorityLabels,
-                                        getPriorityColor: getPriorityColor,
-                                        getStartDateColor: getStartDateColor,
-
-                                        // 🔥 TAMBAHAN WAJIB
-                                        onStart: startTask,
-                                        getRemainingTime: getRemainingTime,
-                                        formatRemaining: formatRemaining,
-                                        getCompletionStatus:
-                                            getCompletionStatus,
-                                        getCompletionStatusColor:
-                                            getCompletionStatusColor,
-                                      );
-                                    }).toList(),
-
-                                  const SizedBox(height: 12),
-                                ],
+                          // ================= EXPAND → TASK =================
+                          if (isExpanded)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 28),
+                              child: Column(
+                                children: tasks.map((todo) {
+                                  return TodoCard(
+                                    todo: todo,
+                                    isOverdue:
+                                        todo.dueDate != null &&
+                                        todo.dueDate!.isBefore(
+                                          DateTime.now(),
+                                        ) &&
+                                        !todo.isDone,
+                                    toggleTodo: toggleTodo,
+                                    openTaskDialog: (t) =>
+                                        openTaskDialog(t, subContextFilter),
+                                    confirmDelete: (t) => deleteTodo(t.id!),
+                                    priorityLabels: priorityLabels,
+                                    getPriorityColor: getPriorityColor,
+                                    getStartDateColor: getStartDateColor,
+                                    onStart: startTask,
+                                    getRemainingTime: getRemainingTime,
+                                    formatRemaining: formatRemaining,
+                                    getCompletionStatus: getCompletionStatus,
+                                    getCompletionStatusColor:
+                                        getCompletionStatusColor,
+                                  );
+                                }).toList(),
                               ),
                             ),
+
+                          const SizedBox(height: 12),
                         ],
                       );
                     }).toList(),
