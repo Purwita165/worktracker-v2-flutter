@@ -141,6 +141,7 @@ class _TodoPageState extends State<TodoPage> {
   // FORM CONTROLLERS
   // ============================================================
   final descController = TextEditingController();
+  final descriptionController = TextEditingController();
   final workController = TextEditingController();
   final refController = TextEditingController();
   final searchController = TextEditingController();
@@ -148,6 +149,8 @@ class _TodoPageState extends State<TodoPage> {
   final FocusNode quickFocus = FocusNode();
   TextEditingController sequenceController = TextEditingController();
   TextEditingController taskNameController = TextEditingController();
+  final TextEditingController weightController = TextEditingController();
+  final TextEditingController progressController = TextEditingController();
 
   bool isTypingQuick = false;
 
@@ -159,6 +162,8 @@ class _TodoPageState extends State<TodoPage> {
   DateTime? selectedDueDate;
 
   final String currentUserId = "local-user";
+
+  bool isMilestone = false;
 
   String formatDurationShort(Duration d) {
     final days = d.inDays;
@@ -604,6 +609,11 @@ class _TodoPageState extends State<TodoPage> {
     return completed.difference(start);
   }
 
+  double parseNumber(String input) {
+    final normalized = input.replaceAll(',', '.');
+    return double.tryParse(normalized) ?? 0;
+  }
+
   String getProjectStatus(List<Todo> tasks) {
     final due = getProjectDue(tasks);
     final completed = getProjectCompletedDate(tasks);
@@ -712,6 +722,30 @@ class _TodoPageState extends State<TodoPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // ================= OFFICE MODE =================
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Task"),
+                        selected: !isMilestone,
+                        onSelected: (_) {
+                          setStateDialog(() {
+                            isMilestone = false;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text("Milestone"),
+                        selected: isMilestone,
+                        onSelected: (_) {
+                          setStateDialog(() {
+                            isMilestone = true;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+
                   if (contextFilter == "Office" &&
                       currentSubContext == "Project") ...[
                     const SizedBox(height: 10),
@@ -725,33 +759,38 @@ class _TodoPageState extends State<TodoPage> {
 
                     const SizedBox(height: 10),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: sequenceController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: "Seq"),
-                          ),
-                        ),
-
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text("|"),
-                        ),
-
-                        Expanded(
-                          flex: 5,
-                          child: TextField(
-                            controller: taskNameController,
-                            decoration: const InputDecoration(
-                              labelText: "Task",
+                    if (!isMilestone)
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              controller: sequenceController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: "Seq",
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text("|"),
+                          ),
+
+                          Expanded(
+                            flex: 5,
+                            child: TextField(
+                              controller: taskNameController,
+                              decoration: const InputDecoration(
+                                labelText: "Task",
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                    const SizedBox(height: 10),
                   ],
 
                   if (contextFilter == "Office" &&
@@ -776,12 +815,16 @@ class _TodoPageState extends State<TodoPage> {
 
                   Row(
                     children: [
-                      const Text(
-                        "Start Date:",
-                        style: TextStyle(fontWeight: FontWeight.w500),
+                      Text(
+                        isMilestone ? "Milestone Date:" : "Start Date:",
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 12),
-                      Text(formatDate(selectedStartDate)),
+                      Text(
+                        selectedStartDate == null
+                            ? "Not set"
+                            : formatDate(selectedStartDate!),
+                      ),
                       const Spacer(),
                       TextButton(
                         child: const Text("Pick Date"),
@@ -796,6 +839,10 @@ class _TodoPageState extends State<TodoPage> {
                           if (picked != null) {
                             setStateDialog(() {
                               selectedStartDate = picked;
+
+                              if (isMilestone) {
+                                dueDate = picked; // 🔥 sync
+                              }
                             });
                           }
                         },
@@ -806,84 +853,124 @@ class _TodoPageState extends State<TodoPage> {
                   // ================= DUE DATE =================
                   const SizedBox(height: 12),
 
-                  Row(
-                    children: [
-                      const Text(
-                        "Due Date:",
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(formatDate(dueDate)),
-                      const Spacer(),
-                      TextButton(
-                        child: const Text("Pick Date"),
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: dueDate ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2100),
-                          );
+                  if (!isMilestone)
+                    Row(
+                      children: [
+                        const Text(
+                          "Due Date:",
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          dueDate == null ? "Not set" : formatDate(dueDate!),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          child: const Text("Pick Date"),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: dueDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2100),
+                            );
 
-                          if (picked != null) {
-                            setStateDialog(() {
-                              dueDate = picked;
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                            if (picked != null) {
+                              setStateDialog(() {
+                                dueDate = picked;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
 
                   const SizedBox(height: 10),
 
                   // DESCRIPTION
                   TextField(
-                    controller: descController,
+                    controller: descriptionController,
                     decoration: const InputDecoration(labelText: "Description"),
                   ),
 
                   const SizedBox(height: 10),
 
                   // PRIORITY
-                  DropdownButtonFormField<String>(
-                    value: priority ?? "M",
-                    decoration: const InputDecoration(labelText: "Priority"),
-                    items: const [
-                      DropdownMenuItem(value: "H", child: Text("High")),
-                      DropdownMenuItem(value: "M", child: Text("Medium")),
-                      DropdownMenuItem(value: "L", child: Text("Low")),
-                    ],
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        priority = value;
-                      });
-                    },
-                  ),
+                  if (!(contextFilter == "Office" &&
+                      currentSubContext == "Project"))
+                    DropdownButtonFormField<String>(
+                      value: priority ?? "M",
+                      decoration: const InputDecoration(labelText: "Priority"),
+                      items: const [
+                        DropdownMenuItem(value: "H", child: Text("High")),
+                        DropdownMenuItem(value: "M", child: Text("Medium")),
+                        DropdownMenuItem(value: "L", child: Text("Low")),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          priority = value;
+                        });
+                      },
+                    ),
 
                   // PROGRESS
                   const SizedBox(height: 12),
 
-                  Row(
-                    children: [
-                      const Text("Progress"),
-                      const SizedBox(width: 10),
-                      Text("$progress%"),
-                    ],
-                  ),
+                  if (!isMilestone &&
+                      contextFilter == "Office" &&
+                      currentSubContext == "Project")
+                    Row(
+                      children: [
+                        const Text("Progress"),
+                        const SizedBox(width: 10),
+                        Text("$progress%"),
+                      ],
+                    ),
 
-                  Slider(
-                    value: progress.toDouble(),
-                    min: 0,
-                    max: 100,
-                    divisions: 10,
-                    label: "$progress%",
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        progress = value.toInt();
-                      });
-                    },
-                  ),
+                  if (!isMilestone &&
+                      contextFilter == "Office" &&
+                      currentSubContext == "Project") ...[
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: weightController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: "Weight %",
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: progressController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: "Progress %",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  if (!(contextFilter == "Office" &&
+                      currentSubContext == "Project"))
+                    Slider(
+                      value: progress.toDouble(),
+                      min: 0,
+                      max: 100,
+                      divisions: 10,
+                      label: "$progress%",
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          progress = value.toInt();
+                        });
+                      },
+                    ),
                 ],
               ),
 

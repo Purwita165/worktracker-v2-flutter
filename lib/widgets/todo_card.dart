@@ -154,17 +154,6 @@ class TodoCard extends StatelessWidget {
                         children: [
                           TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
                           TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
-
-                          if (!todo.isDone) ...[
-                            const TextSpan(text: "Priority: "),
-                            TextSpan(
-                              text: priorityLabels[todo.priority] ?? "-",
-                              style: TextStyle(
-                                color: getPriorityColor(todo.priority),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     )

@@ -124,6 +124,7 @@ class Todo {
     this.notes,
     this.startDate,
     this.startedAt,
+
   }) : taskDate = taskDate ?? DateTime.now(),
        createdAt = createdAt ?? DateTime.now();
 
@@ -199,6 +200,7 @@ class Todo {
       status: map['status'] ?? 'open',
       category: map['category'],
       notes: map['notes'],
+
     );
   }
 

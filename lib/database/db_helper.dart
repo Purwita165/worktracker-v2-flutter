@@ -11,6 +11,8 @@ class DBHelper {
   static final DBHelper instance = DBHelper._privateConstructor();
 
   // ========================================================
+
+
   // DATABASE CONFIG
   // ========================================================
   // Version HARUS naik kalau schema berubah
@@ -21,8 +23,6 @@ class DBHelper {
   static Database? _database;
 
   
-
-  // ========================================================
   // DATABASE ACCESSOR (LAZY INIT)
   // ========================================================
   Future<Database> get database async {
