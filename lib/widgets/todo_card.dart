@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/todo.dart';
+import '../utils/format_helper.dart';
 
 DateTime normalize(DateTime d) {
   return DateTime(d.year, d.month, d.day);
@@ -129,16 +130,10 @@ class TodoCard extends StatelessWidget {
                 children: [
                   // TITLE
                   Text(
-                    todo.description,
+                    todo.description ?? '',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: todo.isDone
-                          ? Colors.grey
-                          : (isOverdue ? Colors.red : getStartDateColor(todo)),
-                      decoration: todo.isDone
-                          ? TextDecoration.lineThrough
-                          : null,
+                      fontWeight: FontWeight.w600,
+                      color: getScheduleColor(todo.startDate, todo.dueDate, todo.startedAt),
                     ),
                   ),
 
@@ -153,7 +148,11 @@ class TodoCard extends StatelessWidget {
                         ),
                         children: [
                           TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
-                          TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
+                          TextSpan(
+                            text:
+                                "[${formatSeq(todo.seq)} | ${todo.task ?? '-'}]",
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
                         ],
                       ),
                     )

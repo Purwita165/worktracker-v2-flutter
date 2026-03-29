@@ -31,7 +31,17 @@ class DBHelper {
     return _database!;
   }
 
-  // ========================================================
+
+ 
+ Future<void> resetDatabase() async {
+  final dbPath = await getDatabasesPath();
+  final path = join(dbPath, _dbName);
+
+  await deleteDatabase(path);
+
+  print("🔥 DATABASE DELETED");
+}
+
   // INIT DATABASE
   // ========================================================
   Future<Database> _initDB() async {
@@ -53,43 +63,33 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE todos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-
         context TEXT,
-
         sub_context TEXT,
-
         user_id TEXT,
         description TEXT NOT NULL,
-
         work_id TEXT,
         ref TEXT,
-
+        seq TEXT,
+        task TEXT,
         priority TEXT,
-
         due_date TEXT,
-
-        progress INTEGER DEFAULT 0,
-
+        progress REAL DEFAULT 0,
+        weight real default 0,
         task_date TEXT,
-
         created_at TEXT,
-
         start_date TEXT,
-
         started_at TEXT,
-
         updated_at TEXT,
-
         completed_at TEXT,
         duration INTEGER,
-
         is_done INTEGER DEFAULT 0,
-
         status TEXT,
         category TEXT,
         notes TEXT
       )
     ''');
+
+       print("CREATE DB JALAN");
 
     // ========================================================
     // INDEX (PERFORMANCE)

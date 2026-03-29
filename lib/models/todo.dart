@@ -48,7 +48,10 @@ class Todo {
   // ========================================================
   // Selalu punya nilai (default = 0)
   // Hindari null → mencegah bug di UI & perhitungan
-  int progress;
+  final String? seq;
+  final String? task;
+  final double? weight;
+  final double? progress;
 
   // ========================================================
   // TASK DATE
@@ -110,9 +113,10 @@ class Todo {
     required this.description,
     this.workId,
     this.ref,
+    this.seq,
+    this.task,
     required this.priority,
     this.dueDate,
-    this.progress = 0,
     DateTime? taskDate,
     DateTime? createdAt,
     this.updatedAt,
@@ -124,7 +128,8 @@ class Todo {
     this.notes,
     this.startDate,
     this.startedAt,
-
+    this.weight,
+    this.progress,
   }) : taskDate = taskDate ?? DateTime.now(),
        createdAt = createdAt ?? DateTime.now();
 
@@ -142,8 +147,9 @@ class Todo {
       'priority': priority,
       'work_id': workId,
       'ref': ref,
+      'seq': seq,
+      'task': task,
       'due_date': dueDate?.toIso8601String(),
-      'progress': progress,
       'task_date': taskDate.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'start_date': startDate?.toIso8601String(),
@@ -155,6 +161,8 @@ class Todo {
       'status': status,
       'category': category,
       'notes': notes,
+      'weight': weight,
+      'progress': progress,
     };
   }
 
@@ -172,8 +180,9 @@ class Todo {
       priority: map['priority'],
       workId: map['work_id'],
       ref: map['ref'],
+      seq: map['seq'],
+      task: map['task'],
       dueDate: map['due_date'] != null ? DateTime.parse(map['due_date']) : null,
-      progress: map['progress'] ?? 0,
       taskDate: map['task_date'] != null
           ? DateTime.parse(map['task_date'])
           : DateTime.now(),
@@ -200,7 +209,8 @@ class Todo {
       status: map['status'] ?? 'open',
       category: map['category'],
       notes: map['notes'],
-
+      weight: (map['weight'] ?? 0).toDouble(),
+      progress: (map['progress'] ?? 0).toDouble(),
     );
   }
 
@@ -210,36 +220,42 @@ class Todo {
   // Dipakai untuk update tanpa mengubah object asli
   // Penting untuk state management (Flutter best practice)
   Todo copyWith({
-  int? id,
-  String? userId,
-  String? description,
-  String? workId,
-  String? ref,
-  String? priority,
-  DateTime? dueDate,
-  int? progress,
-  DateTime? taskDate,
-  DateTime? startDate,
-  DateTime? startedAt,
-  DateTime? completedAt,
-  bool? isDone,
-}) {
-  return Todo(
-    id: id ?? this.id,
-    userId: userId ?? this.userId,
-    context: context?? this.context,
-    subContext: subContext?? this.subContext,
-    description: description ?? this.description,
-    workId: workId ?? this.workId,
-    ref: ref ?? this.ref,
-    priority: priority ?? this.priority,
-    dueDate: dueDate ?? this.dueDate,
-    progress: progress ?? this.progress,
-    taskDate: taskDate ?? this.taskDate,
-    startDate: startDate ?? this.startDate,
-    startedAt: startedAt ?? this.startedAt,
-    completedAt: completedAt ?? this.completedAt,
-    isDone: isDone ?? this.isDone,
-  );
-}
+    int? id,
+    String? userId,
+    String? description,
+    String? workId,
+    String? ref,
+    String? seq,
+    String? task,
+    String? priority,
+    DateTime? dueDate,
+    DateTime? taskDate,
+    DateTime? startDate,
+    DateTime? startedAt,
+    DateTime? completedAt,
+    bool? isDone,
+    double? weight, // 🔥 TAMBAH
+    double? progress,
+  }) {
+    return Todo(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      context: context ?? this.context,
+      subContext: subContext ?? this.subContext,
+      description: description ?? this.description,
+      workId: workId ?? this.workId,
+      ref: ref ?? this.ref,
+      seq: seq ?? this.seq,
+      task: task ?? this.task,
+      priority: priority ?? this.priority,
+      dueDate: dueDate ?? this.dueDate,
+      taskDate: taskDate ?? this.taskDate,
+      startDate: startDate ?? this.startDate,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
+      isDone: isDone ?? this.isDone,
+      weight: weight ?? this.weight,
+      progress: progress ?? this.progress,
+    );
+  }
 }

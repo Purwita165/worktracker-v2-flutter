@@ -45,21 +45,22 @@ class _TodoPageState extends State<TodoPage> {
   }
 
   void clearForm() {
-    // ================= TEXT CONTROLLER =================
     descController.clear();
+    descriptionController.clear();
+
     workController.clear();
     refController.clear();
 
     sequenceController.clear();
     taskNameController.clear();
 
-    // ================= DATE =================
-    selectedStartDate = null;
-    selectedDueDate = null;
+    weightController.clear();
+    progressController.clear();
 
-    // ================= VALUE =================
-    progress = 0;
-    priority = "M"; // default Medium
+    selectedStartDate = null;
+    dueDate = null;
+
+    priority = "M";
 
     // ================= OPTIONAL =================
     // kalau kamu pakai sub context filter di form
@@ -144,11 +145,11 @@ class _TodoPageState extends State<TodoPage> {
   final descriptionController = TextEditingController();
   final workController = TextEditingController();
   final refController = TextEditingController();
+  final sequenceController = TextEditingController();
+  final taskNameController = TextEditingController();
   final searchController = TextEditingController();
   final quickController = TextEditingController();
   final FocusNode quickFocus = FocusNode();
-  TextEditingController sequenceController = TextEditingController();
-  TextEditingController taskNameController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
   final TextEditingController progressController = TextEditingController();
 
@@ -244,16 +245,19 @@ class _TodoPageState extends State<TodoPage> {
 
   // ============================================================
   // INIT
-  // ============================================================
+  // =======================================
   @override
   void initState() {
     super.initState();
 
-    // ✅ SET DEFAULT FILTER DULU
+    // baru load
+    loadTodos();
+
+    // SET DEFAULT FILTER DULU
     contextFilter = "Office";
     subContextFilter = "Project";
 
-    // ✅ BARU LOAD DATA
+    //     ✅ BARU LOAD DATA
     loadTodos();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -318,33 +322,47 @@ class _TodoPageState extends State<TodoPage> {
 
   // ============================================================
   // ADD TODO
-  // ============================================================
+
+  double parseInput(String value) {
+    if (value.trim().isEmpty) return 0;
+
+    final normalized = value.replaceAll(',', '.');
+    return double.tryParse(normalized) ?? 0;
+  }
+
   Future<void> addTodo() async {
-    if (descController.text.trim().isEmpty) return;
+    print("➡️ MASUK addTodo");
+
+    if (descriptionController.text.trim().isEmpty) {
+      print("❌ Description kosong");
+      return;
+    }
 
     final todo = Todo(
       userId: currentUserId,
       context: contextFilter ?? "Office",
-      subContext: subContextFilter,
-      description: descController.text.trim(),
+      subContext: subContextFilter ?? "Project",
+      description: descriptionController.text.trim(),
       workId: workController.text.isEmpty ? null : workController.text,
-      ref: (contextFilter == "Office" && subContextFilter == "Project")
-          ? (sequenceController.text.isEmpty && taskNameController.text.isEmpty)
-                ? null
-                : "${sequenceController.text.padLeft(3, '0')}|${taskNameController.text.trim()}"
-          : refController.text.isEmpty
-          ? null
-          : refController.text,
+      ref: refController.text.isEmpty ? null : refController.text,
+      seq: sequenceController.text,
+      task: taskNameController.text,
       priority: priority ?? "M",
       dueDate: dueDate,
-      progress: progress,
+
+      weight: parseInput(weightController.text),
+      progress: parseInput(progressController.text),
 
       startDate: selectedStartDate,
       startedAt: null,
       status: 'open',
     );
 
+    print("📦 DATA: ${todo.toMap()}");
+
     await dbHelper.insertTodo(todo);
+
+    print("✅ BERHASIL INSERT");
 
     clearForm();
     await loadTodos();
@@ -406,12 +424,15 @@ class _TodoPageState extends State<TodoPage> {
   // ============================================================
   Future<void> updateTodo(Todo todo) async {
     final updated = todo.copyWith(
-      description: descController.text.trim(),
+      description: descriptionController.text.trim(),
       workId: workController.text,
       ref: refController.text,
+      seq: sequenceController.text,
+      task: taskNameController.text,
       priority: priority ?? "M",
       dueDate: dueDate,
-      progress: progress,
+      weight: parseInput(weightController.text),
+      progress: parseInput(progressController.text),
       startDate: selectedStartDate, // penting
     );
 
@@ -609,11 +630,6 @@ class _TodoPageState extends State<TodoPage> {
     return completed.difference(start);
   }
 
-  double parseNumber(String input) {
-    final normalized = input.replaceAll(',', '.');
-    return double.tryParse(normalized) ?? 0;
-  }
-
   String getProjectStatus(List<Todo> tasks) {
     final due = getProjectDue(tasks);
     final completed = getProjectCompletedDate(tasks);
@@ -680,17 +696,24 @@ class _TodoPageState extends State<TodoPage> {
   // DIALOG
   // ============================================================
   void openTaskDialog(Todo? todo, String? currentSubContext) {
+    // 🔥 WAJIB: reset dulu SEMUA
+    clearForm();
+
     if (todo != null) {
       // EDIT MODE
-      descController.text = todo.description;
+      descriptionController.text = todo.description;
       workController.text = todo.workId ?? "";
       refController.text = todo.ref ?? "";
+      sequenceController.text = todo.seq ?? "";
+      taskNameController.text = todo.task ?? "";
       priority = todo.priority;
       dueDate = todo.dueDate;
       selectedStartDate = todo.startDate;
-      progress = todo.progress;
 
-      // 🔥 FIX UNTUK PROJECT (split Sequence | Task)
+      weightController.text = (todo.weight ?? 0).toString();
+      progressController.text = (todo.progress ?? 0).toString();
+
+      // 🔥 FIX PROJECT SPLIT
       if (todo.context == "Office" &&
           todo.subContext == "Project" &&
           todo.ref != null &&
@@ -700,14 +723,7 @@ class _TodoPageState extends State<TodoPage> {
         sequenceController.text = todo.ref!.substring(0, index).trim();
 
         taskNameController.text = todo.ref!.substring(index + 1).trim();
-      } else {
-        // clear biar tidak bawa data lama
-        sequenceController.clear();
-        taskNameController.clear();
       }
-    } else {
-      // ADD MODE
-      clearForm();
     }
 
     showDialog(
@@ -981,11 +997,16 @@ class _TodoPageState extends State<TodoPage> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
+                    print("🔥 SAVE DITEKAN");
+
                     if (todo == null) {
                       await addTodo();
                     } else {
                       await updateTodo(todo);
                     }
+
+                    print("✅ SELESAI SAVE");
+
                     Navigator.pop(context);
                   },
                   child: const Text("Save"),
@@ -1018,11 +1039,26 @@ class _TodoPageState extends State<TodoPage> {
     }
 
     // ================= SORT =================
+    int compareSeq(String? a, String? b) {
+      final aParts = (a ?? "").split('.');
+      final bParts = (b ?? "").split('.');
+
+      for (int i = 0; i < aParts.length && i < bParts.length; i++) {
+        final aNum = int.tryParse(aParts[i]) ?? 0;
+        final bNum = int.tryParse(bParts[i]) ?? 0;
+
+        if (aNum != bNum) {
+          return aNum.compareTo(bNum);
+        }
+      }
+
+      return aParts.length.compareTo(bParts.length);
+    }
+
+    // ================= SORT =================
     for (var entry in projectGroups.entries) {
       entry.value.sort((a, b) {
-        final aSeq = int.tryParse(a.ref?.split('|').first.trim() ?? '') ?? 0;
-        final bSeq = int.tryParse(b.ref?.split('|').first.trim() ?? '') ?? 0;
-        return aSeq.compareTo(bSeq);
+        return compareSeq(a.seq, b.seq);
       });
     }
 
