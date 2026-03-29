@@ -4,6 +4,8 @@ import '../database/db_helper.dart';
 import 'package:intl/intl.dart';
 import '../widgets/todo_card.dart';
 import 'dart:async';
+import '../services/s_curve_service.dart';
+import '../models/s_curve.dart';
 
 enum FilterType { all, active, completed, priority, due }
 
@@ -243,22 +245,29 @@ class _TodoPageState extends State<TodoPage> {
     return diff.isNegative ? Duration.zero : diff;
   }
 
+  late SCurveService service;
+  late List<DateTime> weeks;
+  late Map<int, double> planned;
+  late Map<int, double> actual;
+  late List<SCurvePoint> sCurve;
+
   // ============================================================
   // INIT
   // =======================================
   @override
   void initState() {
+
     super.initState();
 
-    // baru load
-    loadTodos();
+    service = SCurveService();
 
-    // SET DEFAULT FILTER DULU
+    // default filter
     contextFilter = "Office";
     subContextFilter = "Project";
 
-    //     ✅ BARU LOAD DATA
+    // load data
     loadTodos();
+    sortProjectGroups();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {});
@@ -270,6 +279,34 @@ class _TodoPageState extends State<TodoPage> {
       });
     });
   }
+
+ void _buildSCurve() {
+   if (todos.isEmpty) return;
+
+    final start = todos
+        .where((e) => e.startDate != null)
+        .map((e) => e.startDate!)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+
+    final end = todos
+        .where((e) => e.dueDate != null)
+        .map((e) => e.dueDate!)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    weeks = service.generateWeeks(start, end);
+    planned = service.calculatePlannedPerWeek(todos, weeks);
+    actual = service.calculateActualPerWeek(todos, weeks);
+    sCurve = service.buildSCurve(planned, actual, weeks);
+
+    // DEBUG
+    print("===== S-CURVE DEBUG =====");
+    for (var p in sCurve) {
+      print("${p.period} | plan: ${p.planned.toStringAsFixed(2)} | actual: ${p.actual.toStringAsFixed(2)} | cumPlan: ${p.cumPlanned.toStringAsFixed(2)} | cumActual: ${p.cumActual.toStringAsFixed(2)}");
+    }
+
+    setState(() {}); 
+  }
+
 
   @override
   void dispose() {
@@ -318,6 +355,9 @@ class _TodoPageState extends State<TodoPage> {
         return true;
       }).toList();
     });
+
+  _buildSCurve();
+    
   }
 
   // ============================================================
@@ -692,6 +732,49 @@ class _TodoPageState extends State<TodoPage> {
     return Colors.red;
   }
 
+   // ================= SORT =================
+    int compareSeq(String? a, String? b) {
+      final aParts = (a ?? "").split('.');
+      final bParts = (b ?? "").split('.');
+
+      for (int i = 0; i < aParts.length && i < bParts.length; i++) {
+        final aNum = int.tryParse(aParts[i]) ?? 0;
+        final bNum = int.tryParse(bParts[i]) ?? 0;
+
+        if (aNum != bNum) {
+          return aNum.compareTo(bNum);
+        }
+      }
+
+      return aParts.length.compareTo(bParts.length);
+    }
+
+    Map<String, List<Todo>> projectGroups = {};
+
+    void buildProjectGroups() {
+  projectGroups.clear();
+
+  for (var todo in todos) {
+    final key = todo.project ?? "General";
+
+    if (!projectGroups.containsKey(key)) {
+      projectGroups[key] = [];
+    }
+
+    projectGroups[key]!.add(todo);
+  }
+}
+
+    void sortProjectGroups() {
+  for (var entry in projectGroups.entries) {
+    entry.value.sort((a, b) {
+      return compareSeq(a.seq, b.seq);
+    });
+  }
+}
+
+ 
+
   // ============================================================
   // DIALOG
   // ============================================================
@@ -1024,6 +1107,7 @@ class _TodoPageState extends State<TodoPage> {
   // ============================================================
   @override
   Widget build(BuildContext context) {
+
     final filteredTodos = getFilteredTodos();
 
     // ================= GROUPING =================
@@ -1036,30 +1120,6 @@ class _TodoPageState extends State<TodoPage> {
         projectGroups.putIfAbsent(key, () => []);
         projectGroups[key]!.add(todo);
       }
-    }
-
-    // ================= SORT =================
-    int compareSeq(String? a, String? b) {
-      final aParts = (a ?? "").split('.');
-      final bParts = (b ?? "").split('.');
-
-      for (int i = 0; i < aParts.length && i < bParts.length; i++) {
-        final aNum = int.tryParse(aParts[i]) ?? 0;
-        final bNum = int.tryParse(bParts[i]) ?? 0;
-
-        if (aNum != bNum) {
-          return aNum.compareTo(bNum);
-        }
-      }
-
-      return aParts.length.compareTo(bParts.length);
-    }
-
-    // ================= SORT =================
-    for (var entry in projectGroups.entries) {
-      entry.value.sort((a, b) {
-        return compareSeq(a.seq, b.seq);
-      });
     }
 
     return Scaffold(
@@ -1096,6 +1156,7 @@ class _TodoPageState extends State<TodoPage> {
               ],
             ),
           ),
+        
 
           // SEARCH
           Padding(
@@ -1336,41 +1397,64 @@ class _TodoPageState extends State<TodoPage> {
 
                           // ================= EXPAND → TASK =================
                           if (isExpanded)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 28),
-                              child: Column(
-                                children: tasks.map((todo) {
-                                  return TodoCard(
-                                    todo: todo,
-                                    isOverdue:
-                                        todo.dueDate != null &&
-                                        todo.dueDate!.isBefore(
-                                          DateTime.now(),
-                                        ) &&
-                                        !todo.isDone,
-                                    toggleTodo: toggleTodo,
-                                    openTaskDialog: (t) =>
-                                        openTaskDialog(t, subContextFilter),
-                                    confirmDelete: (t) => deleteTodo(t.id!),
-                                    priorityLabels: priorityLabels,
-                                    getPriorityColor: getPriorityColor,
-                                    getStartDateColor: getStartDateColor,
-                                    onStart: startTask,
-                                    getRemainingTime: getRemainingTime,
-                                    formatRemaining: formatRemaining,
-                                    getCompletionStatus: getCompletionStatus,
-                                    getCompletionStatusColor:
-                                        getCompletionStatusColor,
-                                  );
-                                }).toList(),
-                              ),
-                            ),
+  Padding(
+    padding: const EdgeInsets.only(left: 28),
+    child: Column(
+      children: tasks.map((todo) {
+        return TodoCard(
+          todo: todo,
+          isOverdue:
+              todo.dueDate != null &&
+              todo.dueDate!.isBefore(DateTime.now()) &&
+              !todo.isDone,
+          toggleTodo: toggleTodo,
+          openTaskDialog: (t) => openTaskDialog(t, subContextFilter),
+          confirmDelete: (t) => deleteTodo(t.id!),
+          priorityLabels: priorityLabels,
+          getPriorityColor: getPriorityColor,
+          getStartDateColor: getStartDateColor,
+          onStart: startTask,
+          getRemainingTime: getRemainingTime,
+          formatRemaining: formatRemaining,
+          getCompletionStatus: getCompletionStatus,
+          getCompletionStatusColor: getCompletionStatusColor);
+      }).toList(),
+              ),
+            ),
+        ],
+      );
+        
+    }).toList(),
+  )
+  : const SizedBox(),
+   );// ✅ selesai
 
-                          const SizedBox(height: 12),
-                        ],
-                      );
-                    }).toList(),
-                  )
+return Column(
+children: [
+  if (sCurve.isNotEmpty)
+    Container(
+      padding: EdgeInsets.all(12),
+      margin: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4),
+        ],
+      ),
+      child: Text(
+        sCurve.map((e) => e.cumPlanned.toStringAsFixed(0)).join(" → "),
+      ),
+    ),
+
+  Expanded(
+    child: ListView(
+      children: todos.map((t) => TodoCard(todo: t)).toList(),
+    ),
+  ),
+],
+)
+                  
                 : ListView.builder(
                     itemCount: filteredTodos.length,
                     itemBuilder: (_, i) {

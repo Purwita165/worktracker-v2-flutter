@@ -110,7 +110,6 @@ class TodoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const smallText = TextStyle(fontSize: 12);
-
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -123,7 +122,7 @@ class TodoCard extends StatelessWidget {
             Checkbox(value: todo.isDone, onChanged: (_) => toggleTodo(todo)),
 
             const SizedBox(width: 8),
-
+            
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
