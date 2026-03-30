@@ -9,7 +9,7 @@ class Todo {
   // USER IDENTIFICATION
   // ========================================================
   // Disiapkan untuk future multi-user / sync system
-  final String userId;
+  final int userId;
 
   //CONTEXT AND SUB CONTEXT
 
@@ -52,6 +52,7 @@ class Todo {
   final String? task;
   final double? weight;
   final double? progress;
+  final String type; // 'task' atau 'milestone'
 
   // ========================================================
   // TASK DATE
@@ -130,6 +131,7 @@ class Todo {
     this.startedAt,
     this.weight,
     this.progress,
+    required this.type,
   }) : taskDate = taskDate ?? DateTime.now(),
        createdAt = createdAt ?? DateTime.now();
 
@@ -163,6 +165,7 @@ class Todo {
       'notes': notes,
       'weight': weight,
       'progress': progress,
+      'type' : type,
     };
   }
 
@@ -211,6 +214,7 @@ class Todo {
       notes: map['notes'],
       weight: (map['weight'] ?? 0).toDouble(),
       progress: (map['progress'] ?? 0).toDouble(),
+      type: map['type'] ?? 'task',
     );
   }
 
@@ -221,13 +225,14 @@ class Todo {
   // Penting untuk state management (Flutter best practice)
   Todo copyWith({
     int? id,
-    String? userId,
+    int? userId,
     String? description,
     String? workId,
     String? ref,
     String? seq,
     String? task,
     String? priority,
+    String? type,
     DateTime? dueDate,
     DateTime? taskDate,
     DateTime? startDate,
@@ -256,6 +261,7 @@ class Todo {
       isDone: isDone ?? this.isDone,
       weight: weight ?? this.weight,
       progress: progress ?? this.progress,
+      type: 'task'
     );
   }
 }

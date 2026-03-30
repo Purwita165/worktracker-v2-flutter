@@ -4,6 +4,7 @@ import '../database/db_helper.dart';
 import 'package:intl/intl.dart';
 import '../widgets/todo_card.dart';
 import 'dart:async';
+import 'package:worktracker_v2/utils/format_helper.dart';
 
 enum FilterType { all, active, completed, priority, due }
 
@@ -137,6 +138,7 @@ class _TodoPageState extends State<TodoPage> {
   String? dueFilter;
   String? contextFilter;
   String? subContextFilter;
+  String type = 'task';
 
   // ============================================================
   // FORM CONTROLLERS
@@ -330,32 +332,41 @@ class _TodoPageState extends State<TodoPage> {
     return double.tryParse(normalized) ?? 0;
   }
 
-  Future<void> addTodo() async {
-    print("➡️ MASUK addTodo");
+  String generateMilestoneAfterLastTask(List<Todo> todos) {
+    final lastTask = todos
+        .where((t) => t.type == 'task')
+        .map((t) => int.tryParse(t.seq ?? '0') ?? 0)
+        .fold(0, (max, val) => val > max ? val : max);
 
-    if (descriptionController.text.trim().isEmpty) {
-      print("❌ Description kosong");
-      return;
+    return '${lastTask}M';
+  }
+
+  Future<void> addTodo() async {
+    print("🟦 MASUK addTodo");
+
+    String seq;
+
+    // ✅ LOGIC DI SINI
+    if (type == 'milestone') {
+      seq = generateMilestoneAfterLastTask(todos); // atau list kamu
+    } else {
+      seq = sequenceController.text;
     }
 
     final todo = Todo(
-      userId: currentUserId,
-      context: contextFilter ?? "Office",
-      subContext: subContextFilter ?? "Project",
-      description: descriptionController.text.trim(),
+      userId: 1, // sementara hardcode dulu
+      context: 'Office',
+      description: descriptionController.text,
+      type: type, // penting (task/milestone)
+
       workId: workController.text.isEmpty ? null : workController.text,
       ref: refController.text.isEmpty ? null : refController.text,
-      seq: sequenceController.text,
+      seq: seq,
       task: taskNameController.text,
       priority: priority ?? "M",
       dueDate: dueDate,
-
       weight: parseInput(weightController.text),
       progress: parseInput(progressController.text),
-
-      startDate: selectedStartDate,
-      startedAt: null,
-      status: 'open',
     );
 
     print("📦 DATA: ${todo.toMap()}");
@@ -399,11 +410,13 @@ class _TodoPageState extends State<TodoPage> {
     if (text.trim().isEmpty) return;
 
     final todo = Todo(
-      userId: currentUserId,
+      userId: int.parse(currentUserId),
       description: text.trim(),
 
       context: contextFilter ?? "Office",
       subContext: subContextFilter,
+
+      type: 'task',
 
       priority: "M",
       progress: 0,
@@ -422,21 +435,47 @@ class _TodoPageState extends State<TodoPage> {
   // ============================================================
   // UPDATE
   // ============================================================
-  Future<void> updateTodo(Todo todo) async {
-    final updated = todo.copyWith(
-      description: descriptionController.text.trim(),
-      workId: workController.text,
-      ref: refController.text,
-      seq: sequenceController.text,
+  Future<void> updateTodo(Todo existingTodo) async {
+    print("🟨 MASUK updateTodo");
+
+    String seq;
+
+    final isChangingType = existingTodo.type != type;
+
+    if (type == 'milestone') {
+      if (isChangingType) {
+        // Task → Milestone
+        seq = generateMilestoneAfterLastTask(todos);
+      } else {
+        // tetap milestone → jangan ubah
+        seq = existingTodo.seq ?? '';
+      }
+    } else {
+      if (isChangingType) {
+        // Milestone → Task → pakai input manual
+        seq = sequenceController.text;
+      } else {
+        // tetap task → jangan ubah
+        seq = existingTodo.seq ?? '';
+      }
+    }
+
+    final updatedTodo = existingTodo.copyWith(
+      seq: seq,
       task: taskNameController.text,
-      priority: priority ?? "M",
+      description: descriptionController.text,
+      type: type,
       dueDate: dueDate,
+      startDate: selectedStartDate,
       weight: parseInput(weightController.text),
       progress: parseInput(progressController.text),
-      startDate: selectedStartDate, // penting
     );
 
-    await dbHelper.updateTodo(updated);
+    await dbHelper.updateTodo(updatedTodo);
+
+    print("✅ BERHASIL UPDATE");
+
+    clearForm();
     await loadTodos();
   }
 
@@ -751,11 +790,20 @@ class _TodoPageState extends State<TodoPage> {
                       ),
                       const SizedBox(width: 8),
                       ChoiceChip(
-                        label: const Text("Milestone"),
-                        selected: isMilestone,
+                        label: const Text("Task"),
+                        selected: type == 'task',
                         onSelected: (_) {
                           setStateDialog(() {
-                            isMilestone = true;
+                            type = 'task';
+                          });
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text("Milestone"),
+                        selected: type == 'milestone',
+                        onSelected: (_) {
+                          setStateDialog(() {
+                            type = 'milestone';
                           });
                         },
                       ),
@@ -1039,26 +1087,9 @@ class _TodoPageState extends State<TodoPage> {
     }
 
     // ================= SORT =================
-    int compareSeq(String? a, String? b) {
-      final aParts = (a ?? "").split('.');
-      final bParts = (b ?? "").split('.');
-
-      for (int i = 0; i < aParts.length && i < bParts.length; i++) {
-        final aNum = int.tryParse(aParts[i]) ?? 0;
-        final bNum = int.tryParse(bParts[i]) ?? 0;
-
-        if (aNum != bNum) {
-          return aNum.compareTo(bNum);
-        }
-      }
-
-      return aParts.length.compareTo(bParts.length);
-    }
-
-    // ================= SORT =================
     for (var entry in projectGroups.entries) {
       entry.value.sort((a, b) {
-        return compareSeq(a.seq, b.seq);
+        return compareSeq(a.seq ?? '', b.seq ?? '');
       });
     }
 
