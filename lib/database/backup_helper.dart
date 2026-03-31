@@ -5,14 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import '../models/todo.dart';
 
 class BackupHelper {
-  // ========================================================
-  // FILE NAME
-  // ========================================================
   static const String _fileName = "todo_backup.json";
 
-  // ========================================================
-  // GET FILE
-  // ========================================================
   static Future<File> _getFile() async {
     final dir = await getApplicationDocumentsDirectory();
     final path = "${dir.path}/$_fileName";
@@ -22,15 +16,14 @@ class BackupHelper {
     return File(path);
   }
 
-  // ========================================================
-  // SAVE BACKUP
-  // ========================================================
+  // ===============================
+  // SAVE BACKUP (INI = EXPORT)
+  // ===============================
   static Future<void> saveBackup(List<Todo> todos) async {
     try {
       final file = await _getFile();
 
       final data = todos.map((e) => e.toMap()).toList();
-
       final jsonString = jsonEncode(data);
 
       await file.writeAsString(jsonString);
@@ -41,9 +34,9 @@ class BackupHelper {
     }
   }
 
-  // ========================================================
-  // LOAD BACKUP
-  // ========================================================
+  // ===============================
+  // LOAD BACKUP (INI = IMPORT)
+  // ===============================
   static Future<List<Todo>> loadBackup() async {
     try {
       final file = await _getFile();
@@ -61,7 +54,6 @@ class BackupHelper {
       }
 
       final List decoded = jsonDecode(content);
-
       final todos = decoded.map((e) => Todo.fromMap(e)).toList();
 
       print("📥 BACKUP LOADED (${todos.length} items)");
@@ -73,9 +65,9 @@ class BackupHelper {
     }
   }
 
-  // ========================================================
+  // ===============================
   // DELETE BACKUP (OPTIONAL)
-  // ========================================================
+  // ===============================
   static Future<void> deleteBackup() async {
     try {
       final file = await _getFile();

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../widgets/todo_card.dart';
 import 'dart:async';
 import 'package:worktracker_v2/utils/format_helper.dart';
+import '../helpers/backup_helper.dart';
 
 enum FilterType { all, active, completed, priority, due }
 
@@ -18,7 +19,7 @@ class TodoPage extends StatefulWidget {
 class _TodoPageState extends State<TodoPage> {
   final dbHelper = DBHelper.instance;
 
-  List<Todo> todos = [];
+  List<Todo> _todos = [];
 
   // BUKA-TUTUP GROUP PROJECT
 
@@ -301,7 +302,7 @@ class _TodoPageState extends State<TodoPage> {
     final data = await dbHelper.getTodos();
 
     setState(() {
-      todos = data.where((t) {
+      _todos = data.where((t) {
         // FILTER CONTEXT
         if (contextFilter != null && t.context != contextFilter) {
           return false;
@@ -345,7 +346,7 @@ class _TodoPageState extends State<TodoPage> {
 
     // ✅ LOGIC DI SINI
     if (type == 'milestone') {
-      seq = generateMilestoneAfterLastTask(todos); // atau list kamu
+      seq = generateMilestoneAfterLastTask(_todos); // atau list kamu
     } else {
       seq = sequenceController.text;
     }
@@ -373,7 +374,15 @@ class _TodoPageState extends State<TodoPage> {
     print("✅ BERHASIL INSERT");
 
     clearForm();
-    await loadTodos();
+    await _loadTodos();
+  }
+
+  Future<void> _loadTodos() async {
+    final todos = await DBHelper.instance.getTodos();
+
+    setState(() {
+      _todos = todos; // pastikan variable ini ada
+    });
   }
 
   // ================= START TASK =================
@@ -391,9 +400,9 @@ class _TodoPageState extends State<TodoPage> {
     final updated = todo.copyWith(startedAt: newStartedAt);
 
     setState(() {
-      final index = todos.indexWhere((t) => t.id == todo.id);
+      final index = _todos.indexWhere((t) => t.id == todo.id);
       if (index != -1) {
-        todos[index] = updated;
+        _todos[index] = updated;
       }
     });
 
@@ -442,7 +451,7 @@ class _TodoPageState extends State<TodoPage> {
     if (type == 'milestone') {
       if (isChangingType) {
         // Task → Milestone
-        seq = generateMilestoneAfterLastTask(todos);
+        seq = generateMilestoneAfterLastTask(_todos);
       } else {
         // tetap milestone → jangan ubah
         seq = existingTodo.seq ?? '';
@@ -484,6 +493,38 @@ class _TodoPageState extends State<TodoPage> {
     await loadTodos();
   }
 
+  // UNDO DELETED
+  Todo? _lastDeletedTodo;
+
+  Future<void> deleteTodoWithUndo(Todo todo) async {
+    // simpan dulu
+    _lastDeletedTodo = todo;
+
+    // hapus dari database
+    await deleteTodoWithUndo(todo);
+
+    // refresh UI
+    await _loadTodos();
+
+    // tampilkan snackbar
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🗑 Task dihapus"),
+        action: SnackBarAction(
+          label: "UNDO",
+          onPressed: () async {
+            if (_lastDeletedTodo != null) {
+              await DBHelper.instance.insertTodo(_lastDeletedTodo!);
+              await _loadTodos(); // pastikan pakai underscore
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   // ============================================================
   // TOGGLE DONE (FIXED)
   // ============================================================
@@ -499,9 +540,9 @@ class _TodoPageState extends State<TodoPage> {
     updated.status = newIsDone ? 'done' : 'open';
 
     setState(() {
-      final index = todos.indexWhere((t) => t.id == todo.id);
+      final index = _todos.indexWhere((t) => t.id == todo.id);
       if (index != -1) {
-        todos[index] = updated;
+        _todos[index] = updated;
       }
     });
 
@@ -515,7 +556,7 @@ class _TodoPageState extends State<TodoPage> {
     final now = DateTime.now();
     final query = searchText.toLowerCase();
 
-    return todos.where((t) {
+    return _todos.where((t) {
       // ======= SEARCH FILTER ===========
       if (searchText.isNotEmpty) {
         if (!(t.description.toLowerCase().contains(query) ||
@@ -1033,15 +1074,39 @@ class _TodoPageState extends State<TodoPage> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    print("🔥 SAVE DITEKAN");
+                    final todos = await DBHelper.instance.getTodos();
+                    await BackupHelper.saveBackup(todos);
+                  },
+                  child: const Text("Export"),
+                ),
+
+                ElevatedButton(
+                  onPressed: () async {
+                    final todos = await BackupHelper.loadBackup();
+
+                    await DBHelper.instance.resetDatabase(confirm: true);
+
+                    for (var todo in todos) {
+                      await DBHelper.instance.insertTodo(todo);
+                    }
+
+                    print("✅ Import selesai");
+                  },
+                  child: const Text("Import"),
+                ),
+
+                ElevatedButton(
+                  onPressed: () async {
+                    if (descriptionController.text.isEmpty) {
+                      print("⚠️ Description kosong");
+                      return;
+                    }
 
                     if (todo == null) {
                       await addTodo();
                     } else {
                       await updateTodo(todo);
                     }
-
-                    print("✅ SELESAI SAVE");
 
                     Navigator.pop(context);
                   },

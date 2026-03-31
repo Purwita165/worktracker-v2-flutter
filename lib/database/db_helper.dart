@@ -143,7 +143,6 @@ class DBHelper {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    // 🔥 AUTO BACKUP
     final todos = await getTodos();
     await BackupHelper.saveBackup(todos);
 
@@ -230,5 +229,21 @@ class DBHelper {
     await BackupHelper.saveBackup(todos);
 
     return result;
+  }
+
+  Future<void> restoreFromBackup() async {
+    final db = await database;
+
+    final todos = await BackupHelper.loadBackup();
+
+    for (var todo in todos) {
+      await db.insert(
+        'todos',
+        todo.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    print("✅ Database restored from backup");
   }
 }
