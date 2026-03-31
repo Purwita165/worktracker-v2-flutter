@@ -252,9 +252,6 @@ class _TodoPageState extends State<TodoPage> {
   void initState() {
     super.initState();
 
-    // baru load
-    loadTodos();
-
     // SET DEFAULT FILTER DULU
     contextFilter = "Office";
     subContextFilter = "Project";
@@ -779,15 +776,6 @@ class _TodoPageState extends State<TodoPage> {
                   // ================= OFFICE MODE =================
                   Row(
                     children: [
-                      ChoiceChip(
-                        label: const Text("Task"),
-                        selected: !isMilestone,
-                        onSelected: (_) {
-                          setStateDialog(() {
-                            isMilestone = false;
-                          });
-                        },
-                      ),
                       const SizedBox(width: 8),
                       ChoiceChip(
                         label: const Text("Task"),

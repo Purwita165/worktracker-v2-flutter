@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/todo.dart';
+import '../helpers/backup_helper.dart';
 
 class DBHelper {
   // ========================================================
@@ -10,19 +11,15 @@ class DBHelper {
   DBHelper._privateConstructor();
   static final DBHelper instance = DBHelper._privateConstructor();
 
-  // ========================================================
-
-
   // DATABASE CONFIG
   // ========================================================
   // Version HARUS naik kalau schema berubah
   static const int _dbVersion = 7;
-  
+
   static const String _dbName = "todo.db";
 
   static Database? _database;
 
-  
   // DATABASE ACCESSOR (LAZY INIT)
   // ========================================================
   Future<Database> get database async {
@@ -31,22 +28,29 @@ class DBHelper {
     return _database!;
   }
 
+  Future<void> resetDatabase({bool confirm = false}) async {
+    assert(confirm, "RESET DATABASE HARUS confirm=true");
 
- 
- Future<void> resetDatabase() async {
-  final dbPath = await getDatabasesPath();
-  final path = join(dbPath, _dbName);
+    if (!confirm) {
+      print("⚠️ Reset dibatalkan");
+      return;
+    }
 
-  await deleteDatabase(path);
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, _dbName);
 
-  print("🔥 DATABASE DELETED");
-}
+    await deleteDatabase(path);
+
+    print("🔥 DATABASE DELETED");
+  }
 
   // INIT DATABASE
   // ========================================================
   Future<Database> _initDB() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _dbName);
+
+    print("DB PATH: $path");
 
     return await openDatabase(
       path,
@@ -89,7 +93,7 @@ class DBHelper {
       )
     ''');
 
-       print("CREATE DB JALAN");
+    print("CREATE DB JALAN");
 
     // ========================================================
     // INDEX (PERFORMANCE)
@@ -133,11 +137,17 @@ class DBHelper {
   Future<int> insertTodo(Todo todo) async {
     final db = await database;
 
-    return await db.insert(
+    final id = await db.insert(
       'todos',
       todo.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    // 🔥 AUTO BACKUP
+    final todos = await getTodos();
+    await BackupHelper.saveBackup(todos);
+
+    return id;
   }
 
   // ========================================================
@@ -165,7 +175,7 @@ class DBHelper {
   Future<int> updateTodoStatus(int id, int isDone) async {
     final db = await database;
 
-    return await db.update(
+    final result = await db.update(
       'todos',
       {
         'is_done': isDone,
@@ -176,6 +186,14 @@ class DBHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    // 🔥 AUTO BACKUP
+    if (result > 0) {
+      final todos = await getTodos();
+      await BackupHelper.saveBackup(todos);
+    }
+
+    return result;
   }
 
   // ========================================================
@@ -185,14 +203,18 @@ class DBHelper {
   Future<int> updateTodo(Todo todo) async {
     final db = await database;
 
-    final updatedTodo = todo;
-
-    return await db.update(
+    final result = await db.update(
       'todos',
-      updatedTodo.toMap(),
+      todo.toMap(),
       where: 'id = ?',
       whereArgs: [todo.id],
     );
+
+    // 🔥 AUTO BACKUP
+    final todos = await getTodos();
+    await BackupHelper.saveBackup(todos);
+
+    return result;
   }
 
   // ========================================================
@@ -201,14 +223,12 @@ class DBHelper {
   Future<int> deleteTodo(int id) async {
     final db = await database;
 
-    return await db.delete('todos', where: 'id = ?', whereArgs: [id]);
-  }
+    final result = await db.delete('todos', where: 'id = ?', whereArgs: [id]);
 
-  // ========================================================
-  // CLOSE DATABASE
-  // ========================================================
-  Future close() async {
-    final db = await instance.database;
-    db.close();
+    // 🔥 AUTO BACKUP
+    final todos = await getTodos();
+    await BackupHelper.saveBackup(todos);
+
+    return result;
   }
 }
