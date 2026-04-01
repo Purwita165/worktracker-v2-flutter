@@ -1,28 +1,30 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
- 
- int compareSeq(String a, String b) {
+int compareSeq(String a, String b) {
   List<dynamic> parse(String input) {
     final parts = input.split('.');
     return parts.map((part) {
       final isMilestone = part.endsWith('M');
       final numberPart = part.replaceAll('M', '');
       final num = int.tryParse(numberPart) ?? 0;
-      return {
-        'num': num,
-        'isMilestone': isMilestone,
-      };
+      return {'num': num, 'isMilestone': isMilestone};
     }).toList();
   }
 
   final aParts = parse(a);
   final bParts = parse(b);
 
-  final maxLength = aParts.length > bParts.length ? aParts.length : bParts.length;
+  final maxLength = aParts.length > bParts.length
+      ? aParts.length
+      : bParts.length;
 
   for (int i = 0; i < maxLength; i++) {
-    final aVal = i < aParts.length ? aParts[i] : {'num': 0, 'isMilestone': false};
-    final bVal = i < bParts.length ? bParts[i] : {'num': 0, 'isMilestone': false};
+    final aVal = i < aParts.length
+        ? aParts[i]
+        : {'num': 0, 'isMilestone': false};
+    final bVal = i < bParts.length
+        ? bParts[i]
+        : {'num': 0, 'isMilestone': false};
 
     if (aVal['num'] != bVal['num']) {
       return aVal['num'].compareTo(bVal['num']);
@@ -37,7 +39,37 @@
   return 0;
 }
 
-  Color getScheduleColor(
+String formatDate(DateTime? date) {
+  if (date == null) return "-";
+
+  return "${date.day.toString().padLeft(2, '0')}-"
+      "${date.month.toString().padLeft(2, '0')}-"
+      "${date.year}";
+}
+
+String buildDateInfo({
+  required DateTime? startDate,
+  required DateTime? dueDate,
+  required DateTime? startedAt,
+}) {
+  if (startDate == null || dueDate == null) return "-";
+
+  final start = startedAt ?? startDate;
+  final diff = dueDate.difference(start).inDays;
+
+  String status;
+  if (diff > 0) {
+    status = "Early $diff days";
+  } else if (diff < 0) {
+    status = "Late ${diff.abs()} days";
+  } else {
+    status = "On Time";
+  }
+
+  return "Started: ${formatDate(start)} ($status) | Due: ${formatDate(dueDate)}";
+}
+
+Color getScheduleColor(
   DateTime? startDate,
   DateTime? dueDate,
   DateTime? startedAt,
@@ -74,14 +106,16 @@ String formatSeq(String? input) {
 
   final parts = input.split('.');
 
-  return parts.map((part) {
-    final isMilestone = part.toUpperCase().endsWith('M');
+  return parts
+      .map((part) {
+        final isMilestone = part.toUpperCase().endsWith('M');
 
-    // ambil angka saja
-    final numberPart = part.replaceAll(RegExp(r'[^0-9]'), '');
-    final num = int.tryParse(numberPart) ?? 0;
+        // ambil angka saja
+        final numberPart = part.replaceAll(RegExp(r'[^0-9]'), '');
+        final num = int.tryParse(numberPart) ?? 0;
 
-    // hasilkan kembali
-    return isMilestone ? '${num}M' : num.toString();
-  }).join('.');
+        // hasilkan kembali
+        return isMilestone ? '${num}M' : num.toString();
+      })
+      .join('.');
 }

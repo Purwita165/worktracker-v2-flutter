@@ -140,6 +140,7 @@ class _TodoPageState extends State<TodoPage> {
   String? contextFilter;
   String? subContextFilter;
   String type = 'task';
+  int? seq;
 
   // ============================================================
   // FORM CONTROLLERS
@@ -330,25 +331,27 @@ class _TodoPageState extends State<TodoPage> {
     return double.tryParse(normalized) ?? 0;
   }
 
-  String generateMilestoneAfterLastTask(List<Todo> todos) {
+  int generateMilestoneAfterLastTask(List<Todo> todos) {
     final lastTask = todos
         .where((t) => t.type == 'task')
-        .map((t) => int.tryParse(t.seq ?? '0') ?? 0)
+        .map((t) => t.seq ?? 0)
         .fold(0, (max, val) => val > max ? val : max);
 
-    return '${lastTask}M';
+    return lastTask + 1;
   }
 
   Future<void> addTodo() async {
     print("🟦 MASUK addTodo");
 
-    String seq;
+    int? seq;
 
     // ✅ LOGIC DI SINI
     if (type == 'milestone') {
       seq = generateMilestoneAfterLastTask(_todos); // atau list kamu
     } else {
-      seq = sequenceController.text;
+     seq = sequenceController.text.isNotEmpty
+    ? int.tryParse(sequenceController.text)
+    : null;
     }
 
     final todo = Todo(
@@ -359,7 +362,9 @@ class _TodoPageState extends State<TodoPage> {
 
       workId: workController.text.isEmpty ? null : workController.text,
       ref: refController.text.isEmpty ? null : refController.text,
-      seq: seq,
+      seq: sequenceController.text.isNotEmpty
+          ? int.tryParse(sequenceController.text)
+          : null,
       task: taskNameController.text,
       priority: priority ?? "M",
       dueDate: dueDate,
@@ -444,27 +449,26 @@ class _TodoPageState extends State<TodoPage> {
   Future<void> updateTodo(Todo existingTodo) async {
     print("🟨 MASUK updateTodo");
 
-    String seq;
+    int? seq;
 
     final isChangingType = existingTodo.type != type;
 
     if (type == 'milestone') {
       if (isChangingType) {
         // Task → Milestone
-        seq = generateMilestoneAfterLastTask(_todos);
-      } else {
-        // tetap milestone → jangan ubah
-        seq = existingTodo.seq ?? '';
-      }
-    } else {
-      if (isChangingType) {
-        // Milestone → Task → pakai input manual
-        seq = sequenceController.text;
-      } else {
-        // tetap task → jangan ubah
-        seq = existingTodo.seq ?? '';
-      }
-    }
+        seq = generateMilestoneAfterLastTask(_todos); // pastikan ini return int
+  } else {
+    seq = existingTodo.seq ?? 0;
+  }
+} else {
+  if (isChangingType) {
+    seq = sequenceController.text.isNotEmpty
+        ? int.tryParse(sequenceController.text)
+        : null;
+  } else {
+    seq = existingTodo.seq ?? 0;
+  }
+}
 
     final updatedTodo = existingTodo.copyWith(
       seq: seq,
@@ -548,7 +552,6 @@ class _TodoPageState extends State<TodoPage> {
 
     await dbHelper.updateTodo(updated);
   }
-
   // ============================================================
   // FILTER ENGINE
   // ============================================================
@@ -565,7 +568,6 @@ class _TodoPageState extends State<TodoPage> {
           return false;
         }
       }
-
       // ================= CONTEXT FILTER =================
       if (contextFilter != null) {
         if (t.context != contextFilter) {
@@ -781,7 +783,7 @@ class _TodoPageState extends State<TodoPage> {
       descriptionController.text = todo.description;
       workController.text = todo.workId ?? "";
       refController.text = todo.ref ?? "";
-      sequenceController.text = todo.seq ?? "";
+      sequenceController.text = (todo.seq ?? "").toString();
       taskNameController.text = todo.task ?? "";
       priority = todo.priority;
       dueDate = todo.dueDate;
@@ -1131,7 +1133,7 @@ class _TodoPageState extends State<TodoPage> {
     final projectGroups = <String, List<Todo>>{};
 
     for (var todo in filteredTodos) {
-      if (todo.context == "Office" && todo.subContext == "Project") {
+      if (todo.context == "Office" && todo.workId != null) {
         final key = todo.workId ?? "No Project";
 
         projectGroups.putIfAbsent(key, () => []);
@@ -1142,7 +1144,7 @@ class _TodoPageState extends State<TodoPage> {
     // ================= SORT =================
     for (var entry in projectGroups.entries) {
       entry.value.sort((a, b) {
-        return compareSeq(a.seq ?? '', b.seq ?? '');
+        return (a.seq ?? 0).compareTo(b.seq ?? 0);
       });
     }
 

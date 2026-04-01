@@ -48,7 +48,7 @@ class Todo {
   // ========================================================
   // Selalu punya nilai (default = 0)
   // Hindari null → mencegah bug di UI & perhitungan
-  final String? seq;
+  int? seq;
   final String? task;
   final double? weight;
   final double? progress;
@@ -165,7 +165,7 @@ class Todo {
       'notes': notes,
       'weight': weight,
       'progress': progress,
-      'type' : type,
+      'type': type,
     };
   }
 
@@ -175,15 +175,15 @@ class Todo {
   // Handle null dengan aman (defensive programming)
   factory Todo.fromMap(Map<String, dynamic> map) {
     return Todo(
-      id: map['id'],
+      id: map['id'] is int ? map['id'] : int.tryParse(map['id'].toString()),
       context: map['context'] ?? 'General',
       subContext: map['sub_context'],
-      userId: map['user_id'],
+      userId: int.tryParse(map['user_id'].toString()) ?? 0,
       description: map['description'],
       priority: map['priority'],
       workId: map['work_id'],
       ref: map['ref'],
-      seq: map['seq'],
+      seq: int.tryParse(map['seq'].toString()) ?? 0,
       task: map['task'],
       dueDate: map['due_date'] != null ? DateTime.parse(map['due_date']) : null,
       taskDate: map['task_date'] != null
@@ -212,8 +212,8 @@ class Todo {
       status: map['status'] ?? 'open',
       category: map['category'],
       notes: map['notes'],
-      weight: (map['weight'] ?? 0).toDouble(),
-      progress: (map['progress'] ?? 0).toDouble(),
+      progress: double.tryParse(map['progress'].toString()) ?? 0.0,
+      weight: double.tryParse(map['weight'].toString()) ?? 0.0,
       type: map['type'] ?? 'task',
     );
   }
@@ -229,7 +229,7 @@ class Todo {
     String? description,
     String? workId,
     String? ref,
-    String? seq,
+    int? seq,
     String? task,
     String? priority,
     String? type,
@@ -261,7 +261,7 @@ class Todo {
       isDone: isDone ?? this.isDone,
       weight: weight ?? this.weight,
       progress: progress ?? this.progress,
-      type: 'task'
+      type: 'task',
     );
   }
 }

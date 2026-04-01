@@ -14,7 +14,7 @@ class DBHelper {
   // DATABASE CONFIG
   // ========================================================
   // Version HARUS naik kalau schema berubah
-  static const int _dbVersion = 7;
+  static const int _dbVersion = 8;
 
   static const String _dbName = "todo.db";
 
@@ -58,6 +58,8 @@ class DBHelper {
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
+
+    print("DB PATH: $path");
   }
 
   // ========================================================
@@ -69,11 +71,11 @@ class DBHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         context TEXT,
         sub_context TEXT,
-        user_id TEXT,
+        user_id INTEGER,
         description TEXT NOT NULL,
         work_id TEXT,
         ref TEXT,
-        seq TEXT,
+        seq INTEGER,
         task TEXT,
         priority TEXT,
         due_date TEXT,
@@ -89,11 +91,12 @@ class DBHelper {
         is_done INTEGER DEFAULT 0,
         status TEXT,
         category TEXT,
-        notes TEXT
+        notes TEXT,
+        type TEXT
       )
     ''');
 
-    print("CREATE DB JALAN");
+    print("CREATE DB CREATED BARU");
 
     // ========================================================
     // INDEX (PERFORMANCE)
@@ -109,7 +112,13 @@ class DBHelper {
   // ========================================================
   // Jangan ubah CREATE TABLE lama!
   // Tambah kolom via migration agar data lama tidak hilang
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE todos ADD COLUMN type TEXT');
+    }
+
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE todos ADD COLUMN created_at TEXT');
       await db.execute('ALTER TABLE todos ADD COLUMN updated_at TEXT');

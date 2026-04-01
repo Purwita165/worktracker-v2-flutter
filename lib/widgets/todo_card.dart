@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/todo.dart';
 import '../utils/format_helper.dart';
 
-
-
 DateTime normalize(DateTime d) {
   return DateTime(d.year, d.month, d.day);
 }
@@ -130,245 +128,57 @@ class TodoCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // TITLE
+                  // ===== 1. DESCRIPTION =====
                   Text(
                     todo.description ?? '',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: getScheduleColor(todo.startDate, todo.dueDate, todo.startedAt),
+                      color: getScheduleColor(
+                        todo.startDate,
+                        todo.dueDate,
+                        todo.startedAt,
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 6),
 
-                  // ================= META =================
+                  // ===== 2. WORK INFO =====
                   if (todo.context == "Office" && todo.subContext == "Project")
-                    RichText(
-                      text: TextSpan(
-                        style: smallText.copyWith(
-                          color: todo.isDone ? Colors.grey : Colors.black,
-                        ),
-                        children: [
-                          TextSpan(text: "WorkID: ${todo.workId ?? '-'}   "),
-                          TextSpan(
-                            text:
-                                "[${formatSeq(todo.seq)} | ${todo.task ?? '-'}]",
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (todo.context == "Office" &&
-                      todo.subContext == "General")
-                    RichText(
-                      text: TextSpan(
-                        style: smallText.copyWith(
-                          color: todo.isDone ? Colors.grey : Colors.black,
-                        ),
-                        children: [
-                          TextSpan(text: "Ref: ${todo.ref ?? '-'}   "),
-                          const TextSpan(text: "Priority: "),
-                          TextSpan(
-                            text: priorityLabels[todo.priority] ?? "-",
-                            style: TextStyle(
-                              color: getPriorityColor(todo.priority),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    RichText(
-                      text: TextSpan(
-                        style: smallText.copyWith(
-                          color: todo.isDone ? Colors.grey : Colors.black,
-                        ),
-                        children: [
-                          const TextSpan(text: "Priority: "),
-                          TextSpan(
-                            text: priorityLabels[todo.priority] ?? "-",
-                            style: TextStyle(
-                              color: getPriorityColor(todo.priority),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      "${todo.workId ?? '-'}, Reg: ${todo.seq ?? '-'} | ${todo.task ?? '-'}",
+                      style: smallText.copyWith(
+                        color: todo.isDone ? Colors.grey : Colors.black,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
 
                   const SizedBox(height: 6),
 
-                  // ================= STATUS =================
-                  if (!todo.isDone) ...[
-                    // -------- GENERAL --------
-                    if (todo.context == "Office" &&
-                        todo.subContext == "General") ...[
-                      Text(
-                        "Due: ${formatDate(todo.dueDate)}",
-                        style: smallText,
+                  // ===== 3. DATE INFO (🔥 INI YANG BARU) =====
+                  if (!todo.isDone)
+                    Text(
+                      buildDateInfo(
+                        startDate: todo.startDate,
+                        dueDate: todo.dueDate,
+                        startedAt: todo.startedAt,
                       ),
-
-                      const SizedBox(height: 4),
-
-                      Builder(
-                        builder: (_) {
-                          final now = DateTime.now();
-                          final start = todo.startDate;
-                          final due = todo.dueDate;
-
-                          String formatYMD(DateTime d) =>
-                              "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-
-                          int daysBetween(DateTime a, DateTime b) {
-                            final da = DateTime(a.year, a.month, a.day);
-                            final db = DateTime(b.year, b.month, b.day);
-                            return db.difference(da).inDays;
-                          }
-
-                          if (start != null && now.isBefore(start)) {
-                            final days = daysBetween(now, start);
-                            return Text(
-                              "Starts in $days d (${formatYMD(start)})",
-                              style: smallText.copyWith(color: Colors.blueGrey),
-                            );
-                          }
-
-                          if (due != null) {
-                            if (now.isAfter(due)) {
-                              final days = daysBetween(due, now);
-                              return Text(
-                                "Overdue $days d",
-                                style: smallText.copyWith(color: Colors.red),
-                              );
-                            } else {
-                              final days = daysBetween(now, due);
-                              return Text(
-                                "Remaining $days d",
-                                style: smallText.copyWith(color: Colors.green),
-                              );
-                            }
-                          }
-
-                          return Text(
-                            "No schedule",
-                            style: smallText.copyWith(color: Colors.grey),
-                          );
-                        },
-                      ),
-                    ]
-                    // -------- PROJECT --------
-                    else ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (todo.startDate != null)
-                                  Text(
-                                    "Start: ${formatDate(todo.startDate)}",
-                                    style: smallText,
-                                  ),
-
-                                if (todo.startedAt != null)
-                                  Text(
-                                    "Started: ${formatDate(todo.startedAt)}${getStartStatus(todo)}",
-                                    style: smallText,
-                                  ),
-
-                                if (todo.dueDate != null)
-                                  Text(
-                                    "Due: ${formatDate(todo.dueDate)}",
-                                    style: smallText,
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (todo.startedAt != null)
-                                  Text(
-                                    "Running: ${formatDuration(getRunningDuration())}",
-                                    style: smallText,
-                                  ),
-                                if (todo.dueDate != null)
-                                  Text(
-                                    getRemainingTime(todo).isNegative
-                                        ? "Overdue: ${formatRemaining(getRemainingTime(todo))}"
-                                        : "Remaining: ${formatRemaining(getRemainingTime(todo))}",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: getRemainingTime(todo).isNegative
-                                          ? Colors.red
-                                          : Colors.green,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      // ✅ TAMBAHAN PROGRESS
-                      Text("Progress: ${todo.progress}%", style: smallText),
-
-                      const SizedBox(height: 4),
-
-                      LinearProgressIndicator(
-                        value: (todo.progress ?? 0) / 100,
-                        minHeight: 6,
-                        backgroundColor: Colors.grey.shade300,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors
-                              .blue, // atau Theme.of(context).colorScheme.primary
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: getScheduleColor(
+                          todo.startDate,
+                          todo.dueDate,
+                          todo.startedAt,
                         ),
                       ),
-                    ],
-                  ] else ...[
-                    // -------- COMPLETED --------
+                    )
+                  else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                "Start: ${formatDate(todo.startDate)}",
-                                style: smallText,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                "Due: ${formatDate(todo.dueDate)}",
-                                style: smallText,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                "Completed: ${formatDate(todo.completedAt)}",
-                                style: smallText.copyWith(color: Colors.green),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                todo.startedAt != null &&
-                                        todo.completedAt != null
-                                    ? "Duration: ${formatDuration(todo.completedAt!.difference(todo.startedAt!))}"
-                                    : "Duration: -",
-                                style: smallText,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          "Completed: ${formatDate(todo.completedAt)}",
+                          style: smallText.copyWith(color: Colors.green),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -380,6 +190,23 @@ class TodoCard extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+
+                  const SizedBox(height: 6),
+
+                  // ===== 4. PROGRESS =====
+                  if (!todo.isDone) ...[
+                    Text("Progress: ${todo.progress ?? 0}%", style: smallText),
+
+                    const SizedBox(height: 4),
+
+                    LinearProgressIndicator(
+                      value: (todo.progress ?? 0) / 100,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.blue,
+                      ),
                     ),
                   ],
                 ],
